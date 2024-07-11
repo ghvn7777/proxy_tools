@@ -1,9 +1,13 @@
 mod error;
 mod network;
 pub mod pb;
+mod service;
 mod socks5;
 pub mod util;
 
-pub use error::VpnError;
-pub use socks5::Socks5ServerStream;
-pub use util::client::{AuthInfo, AuthType, Socks5Config};
+pub use error::*;
+pub use network::*;
+pub use service::*;
+pub use socks5::*;
+pub use util::client::*;
+pub use util::socks5::*;

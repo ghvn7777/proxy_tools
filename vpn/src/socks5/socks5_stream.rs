@@ -3,7 +3,11 @@ use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 use tracing::{debug, trace};
 
-use crate::{read_exact, util::socks5::consts, AuthInfo, AuthType, VpnError};
+use crate::{
+    read_exact,
+    util::{read_address, socks5::consts, TargetAddr},
+    AuthInfo, AuthType, Socks5Command, Socks5Error, VpnError,
+};
 
 pub struct Socks5Stream<S> {
     stream: S,
@@ -18,14 +22,25 @@ where
     }
 
     /// Read socks5 client req and connect our server
-    pub async fn request(&mut self, _dns_resolve: bool) -> Result<()> {
+    pub async fn request(
+        &mut self,
+        dns_resolve: bool,
+    ) -> Result<(Socks5Command, TargetAddr), VpnError> {
+        trace!("Socks5Stream: request");
         // todo:
         // 1. resolve dns ?
         // 2. get request address and port
         // 3. send that's info to server
         // 4. return client stream ?
 
-        Ok(())
+        let (cmd, mut target_addr) = self.read_command().await?;
+        if dns_resolve {
+            target_addr = target_addr.resolve_dns().await?;
+        } else {
+            debug!("Domain won't be resolved because `dns_resolve`'s config has been turned off.");
+        }
+
+        Ok((cmd, target_addr))
     }
 
     pub async fn handshake(&mut self, auth_type: &AuthType) -> Result<(), VpnError> {
@@ -36,6 +51,53 @@ where
             self.authenticate(auth_info).await?;
         }
         Ok(())
+    }
+
+    /// Decide to whether or not, accept the authentication method.
+    /// Don't forget that the methods list sent by the client, contains one or more methods.
+    ///
+    /// # Request
+    /// ```text
+    ///          +----+-----+-------+------+----------+----------+
+    ///          |VER | CMD |  RSV  | ATYP | DST.ADDR | DST.PORT |
+    ///          +----+-----+-------+------+----------+----------+
+    ///          | 1  |  1  |   1   |  1   | Variable |    2     |
+    ///          +----+-----+-------+------+----------+----------+
+    /// ```
+    ///
+    /// It the request is correct, it should returns a ['SocketAddr'].
+    ///
+    async fn read_command(&mut self) -> Result<(Socks5Command, TargetAddr), VpnError> {
+        trace!("Socks5Stream: read_command");
+        let [version, cmd, rsv, address_type] =
+            read_exact!(self.stream, [0u8; 4]).context("Malformed request")?;
+        debug!(
+            "Request: [version: {version}, command: {cmd}, rev: {rsv}, address_type: {address_type}]",
+            version = version,
+            cmd = cmd,
+            rsv = rsv,
+            address_type = address_type,
+        );
+
+        if version != consts::SOCKS5_VERSION {
+            return Err(Socks5Error::UnsupportedSocksVersion(version).into());
+        }
+
+        let cmd = match Socks5Command::from_u8(cmd) {
+            None => return Err(Socks5Error::SocksCommandNotSupported.into()),
+            Some(cmd) => match cmd {
+                Socks5Command::TCPConnect => cmd,
+                Socks5Command::UDPAssociate => cmd,
+                Socks5Command::TCPBind => return Err(Socks5Error::SocksCommandNotSupported.into()),
+            },
+        };
+
+        // Guess address type
+        let target_addr = read_address(&mut self.stream, address_type).await?;
+
+        debug!("Request target is {}", target_addr);
+
+        Ok((cmd, target_addr))
     }
 
     /// Read the authentication method provided by the client.
@@ -66,7 +128,7 @@ where
         );
 
         if version != consts::SOCKS5_VERSION {
-            return Err(VpnError::UnsupportedSocksVersion(version));
+            return Err(Socks5Error::UnsupportedSocksVersion(version).into());
         }
 
         // {METHODS available from the client}
@@ -121,7 +183,7 @@ where
                     .await
                     .context("Can't reply with method not acceptable.")?;
 
-                return Err(VpnError::AuthMethodUnacceptable(client_methods));
+                return Err(Socks5Error::AuthMethodUnacceptable(client_methods).into());
             }
         } else {
             method_supported = consts::SOCKS5_AUTH_METHOD_NONE;
@@ -156,10 +218,11 @@ where
         );
 
         if user_len < 1 {
-            return Err(VpnError::AuthenticationFailed(format!(
+            return Err(Socks5Error::AuthenticationFailed(format!(
                 "Username malformed ({} chars)",
                 user_len
-            )));
+            ))
+            .into());
         }
 
         let username = read_exact!(self.stream, vec![0u8; user_len as usize])
@@ -170,10 +233,11 @@ where
         debug!("Auth: [pass len: {}]", pass_len);
 
         if pass_len < 1 {
-            return Err(VpnError::AuthenticationFailed(format!(
+            return Err(Socks5Error::AuthenticationFailed(format!(
                 "Password malformed ({} chars)",
                 pass_len
-            )));
+            ))
+            .into());
         }
 
         let password = read_exact!(self.stream, vec![0u8; pass_len as usize])
@@ -206,10 +270,11 @@ where
                 .await
                 .context("Can't reply with auth method not acceptable.")?;
 
-            return Err(VpnError::AuthenticationRejected(format!(
+            return Err(Socks5Error::AuthenticationRejected(format!(
                 "Authentication, rejected({}, {})",
                 credentials.username, credentials.password
-            )));
+            ))
+            .into());
         }
         // only the password way expect to write a response at this moment
         self.stream

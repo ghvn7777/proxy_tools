@@ -17,12 +17,12 @@ async fn main() -> Result<()> {
     let socket_addr = format!("0.0.0.0:{}", config.port);
 
     let listener = TcpListener::bind(socket_addr).await?;
-    info!("Listening on {}", listener.local_addr()?);
+    info!("Socks5 server listening on {}", listener.local_addr()?);
 
     loop {
         let socks5_config = config.clone();
         let (stream, addr) = listener.accept().await?;
-        info!("Client {:?} connected", addr);
+        info!("Socks5 client {:?} connected", addr);
         tokio::spawn(async move {
             let stream = Socks5ServerStream::new(stream, socks5_config);
             stream.process().await.unwrap();

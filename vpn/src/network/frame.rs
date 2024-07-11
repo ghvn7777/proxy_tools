@@ -4,9 +4,12 @@ use bytes::{Buf, BufMut, BytesMut};
 use flate2::{read::GzDecoder, write::GzEncoder, Compression};
 use prost::Message;
 use tokio::io::{AsyncRead, AsyncReadExt};
-use tracing::debug;
+use tracing::{debug, trace};
 
-use crate::VpnError;
+use crate::{
+    pb::{VpnCommandRequest, VpnCommandResponse},
+    VpnError,
+};
 
 /// 长度整个占用 4 个字节
 pub const LEN_LEN: usize = 4;
@@ -24,6 +27,7 @@ where
 {
     /// 把一个 Message encode 成一个 frame
     fn encode_frame(&self, buf: &mut BytesMut) -> Result<(), VpnError> {
+        trace!("FrameCoder: encode_frame");
         let size = self.encoded_len();
 
         if size >= MAX_FRAME {
@@ -32,6 +36,8 @@ where
 
         // 我们先写入长度，如果需要压缩，再重写压缩后的长度
         buf.put_u32(size as _);
+
+        debug!("Encode a frame: size {}", size);
 
         if size > COMPRESSION_LIMIT {
             let mut buf1 = Vec::with_capacity(size);
@@ -64,6 +70,7 @@ where
     }
     /// 把一个完整的 frame decode 成一个 Message
     fn decode_frame(buf: &mut BytesMut) -> Result<Self, VpnError> {
+        trace!("FrameCoder: decode_frame");
         // 先取 4 字节，从中拿出长度和 compression bit
         let header = buf.get_u32() as usize;
         let (len, compressed) = decode_header(header);
@@ -86,6 +93,9 @@ where
     }
 }
 
+impl FrameCoder for VpnCommandRequest {}
+impl FrameCoder for VpnCommandResponse {}
+
 pub fn decode_header(header: usize) -> (usize, bool) {
     let len = header & !COMPRESSION_BIT;
     let compressed = header & COMPRESSION_BIT == COMPRESSION_BIT;
@@ -103,8 +113,10 @@ where
     buf.reserve(LEN_LEN + len);
     buf.put_u32(header as _);
     // advance_mut 是 unsafe 的原因是，从当前位置 pos 到 pos + len，
-    // 这段内存目前没有初始化。我们就是为了 reserve 这段内存，然后从 stream
-    // 里读取，读取完，它就是初始化的。所以，我们这么用是安全的
+    // 这段内存目前没有初始化。但是我们知道这段内存是有效的，所以可以这么做。
+    // 这么做的目的是适应异步读取的场景，表示我们已经准备好了这些空间准备接收数据
+    // buf.reserve(LEN_LEN + len) 确保了缓冲区足够大，可以容纳即将写入的数据。
+    // unsafe { buf.advance_mut(len) } 则将写入位置移动到预留空间的起始位置，以便后续的数据写入操作可以正确地使用这些空间。
     unsafe { buf.advance_mut(len) };
     stream.read_exact(&mut buf[LEN_LEN..]).await?;
     Ok(())

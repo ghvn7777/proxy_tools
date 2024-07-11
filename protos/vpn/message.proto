@@ -2,12 +2,34 @@ syntax = "proto3";
 
 package vpn;
 
+message DomainAddr {
+  string domain = 1;
+  uint32 port = 2;
+}
+
 message DestinationAddr {
-  message Address {
-    oneof address {
-      string ipv4 = 1;
-      string domain = 2;
-      string ipv6 = 3;
-    }
+  oneof addr {
+    string v4 = 1;
+    string v6 = 2;
+    DomainAddr domain = 3;
   }
+}
+
+message VpnCommandRequest {
+  string connect_id = 1;
+  oneof command {
+      DestinationAddr connect = 2;
+      bytes data = 3;
+      DestinationAddr disconnect = 4;
+  }
+}
+
+message VpnCommandResponse {
+  enum Status {
+    Success = 0;
+    Failed = 1;
+  }
+  Status status = 11;
+  string message = 12; // 如果 status 不是成功，这里包含错误信息
+  bytes data = 13;
 }

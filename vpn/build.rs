@@ -6,7 +6,7 @@ fn main() -> Result<()> {
     let builder = tonic_build::configure();
     builder
         .out_dir("src/pb")
-        .compile(&["../protos/vpn/socks5.proto"], &["../protos"])
+        .compile(&["../protos/vpn/message.proto"], &["../protos"])
         .unwrap();
     Ok(())
 }
