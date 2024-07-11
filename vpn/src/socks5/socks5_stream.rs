@@ -1,3 +1,5 @@
+use std::net::SocketAddr;
+
 use anyhow::{Context, Result};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
@@ -10,7 +12,7 @@ use crate::{
 };
 
 pub struct Socks5Stream<S> {
-    stream: S,
+    pub stream: S,
 }
 
 impl<S> Socks5Stream<S>
@@ -27,11 +29,6 @@ where
         dns_resolve: bool,
     ) -> Result<(Socks5Command, TargetAddr), VpnError> {
         trace!("Socks5Stream: request");
-        // todo:
-        // 1. resolve dns ?
-        // 2. get request address and port
-        // 3. send that's info to server
-        // 4. return client stream ?
 
         let (cmd, mut target_addr) = self.read_command().await?;
         if dns_resolve {
@@ -51,6 +48,75 @@ where
             self.authenticate(auth_info).await?;
         }
         Ok(())
+    }
+
+    /// Execute the socks5 command that the client wants.
+    pub async fn execute_command(&mut self, cmd: Socks5Command) -> Result<bool, VpnError> {
+        match cmd {
+            Socks5Command::TCPBind => Err(Socks5Error::SocksCommandNotSupported.into()),
+            Socks5Command::TCPConnect => Ok(true),
+            Socks5Command::UDPAssociate => Ok(false),
+        }
+    }
+
+    pub async fn read(&mut self, buf: &mut [u8]) -> Result<usize, VpnError> {
+        trace!("Socks5Stream: read");
+        Ok(self
+            .stream
+            .read(buf)
+            .await
+            .context("Can't read from stream")?)
+    }
+
+    pub async fn write(&mut self, buf: &[u8]) -> Result<usize, VpnError> {
+        trace!("Socks5Stream: write");
+        Ok(self
+            .stream
+            .write(buf)
+            .await
+            .context("Can't write to stream")?)
+    }
+
+    pub async fn send_reply(&mut self, rep: u8, sock_addr: SocketAddr) -> Result<(), VpnError> {
+        trace!("Socks5Stream: send_reply");
+        let reply = Self::new_reply(rep, sock_addr);
+        self.stream
+            .write_all(&reply)
+            .await
+            .context("Can't send reply")?;
+        self.stream
+            .flush()
+            .await
+            .context("Can't flush the reply!")?;
+        Ok(())
+    }
+
+    /// Generate reply code according to the RFC.
+    fn new_reply(rep: u8, sock_addr: SocketAddr) -> Vec<u8> {
+        trace!("Socks5Stream: new_reply");
+        let (addr_type, mut ip_oct, mut port) = match sock_addr {
+            SocketAddr::V4(sock) => (
+                consts::SOCKS5_ADDR_TYPE_IPV4,
+                sock.ip().octets().to_vec(),
+                sock.port().to_be_bytes().to_vec(),
+            ),
+            SocketAddr::V6(sock) => (
+                consts::SOCKS5_ADDR_TYPE_IPV6,
+                sock.ip().octets().to_vec(),
+                sock.port().to_be_bytes().to_vec(),
+            ),
+        };
+
+        let mut reply = vec![
+            consts::SOCKS5_VERSION,
+            rep,       // transform the error into byte code
+            0x00,      // reserved
+            addr_type, // address type (ipv4, v6, domain)
+        ];
+        reply.append(&mut ip_oct);
+        reply.append(&mut port);
+
+        reply
     }
 
     /// Decide to whether or not, accept the authentication method.

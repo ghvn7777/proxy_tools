@@ -31,7 +31,7 @@ pub mod destination_addr {
 pub struct VpnCommandRequest {
     #[prost(string, tag = "1")]
     pub connect_id: ::prost::alloc::string::String,
-    #[prost(oneof = "vpn_command_request::Command", tags = "2, 3, 4")]
+    #[prost(oneof = "vpn_command_request::Command", tags = "2, 3, 4, 5")]
     pub command: ::core::option::Option<vpn_command_request::Command>,
 }
 /// Nested message and enum types in `VpnCommandRequest`.
@@ -45,6 +45,8 @@ pub mod vpn_command_request {
         Data(::prost::alloc::vec::Vec<u8>),
         #[prost(message, tag = "4")]
         Disconnect(super::DestinationAddr),
+        #[prost(bool, tag = "5")]
+        GetDatStream(bool),
     }
 }
 #[allow(clippy::derive_partial_eq_without_eq)]

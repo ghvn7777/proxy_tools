@@ -21,6 +21,7 @@ message VpnCommandRequest {
       DestinationAddr connect = 2;
       bytes data = 3;
       DestinationAddr disconnect = 4;
+      bool get_dat_stream = 5;
   }
 }
 

@@ -30,6 +30,24 @@ pub enum VpnError {
 
     #[error("Yamux connect error: {0}")]
     YamuxConnectionError(#[from] yamux::ConnectionError),
+
+    #[error("Send stream data error: {0}")]
+    SendError(#[from] tokio::sync::mpsc::error::SendError<VpnCommandResponse>),
+
+    #[error("Tcp connect error: {0}")]
+    TcpConnectkError(String),
+
+    #[error("Tcp disconnect error: {0}")]
+    TcpDisconnectError(String),
+
+    #[error("Tokio join error: {0}")]
+    JoinError(#[from] tokio::task::JoinError),
+
+    #[error("TLS error")]
+    TlsError(#[from] tokio_rustls::rustls::TLSError),
+
+    #[error("Certificate parse error: error to load {0} {0}")]
+    CertificateParseError(&'static str, &'static str),
 }
 
 #[derive(Error, Debug)]

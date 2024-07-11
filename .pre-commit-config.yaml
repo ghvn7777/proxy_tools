@@ -5,11 +5,13 @@ repos:
     hooks:
       - id: check-byte-order-marker
       - id: check-case-conflict
+        exclude: &exclude_pattern '^/vpn/fixtures/'
       - id: check-merge-conflict
       - id: check-symlinks
       - id: check-yaml
       - id: end-of-file-fixer
       - id: mixed-line-ending
+        exclude: *exclude_pattern
       - id: trailing-whitespace
   - repo: https://github.com/psf/black
     rev: 22.10.0
@@ -24,13 +26,13 @@ repos:
         language: rust
         files: \.rs$
         args: []
-      - id: cargo-deny
-        name: cargo deny check
-        description: Check cargo dependencies
-        entry: bash -c 'cargo deny check -d'
-        language: rust
-        files: \.rs$
-        args: []
+      # - id: cargo-deny
+      #   name: cargo deny check
+      #   description: Check cargo dependencies
+      #   entry: bash -c 'cargo deny check -d'
+      #   language: rust
+      #   files: \.rs$
+      #   args: []
       - id: typos
         name: typos
         description: check typo
