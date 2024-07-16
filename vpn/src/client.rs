@@ -4,7 +4,7 @@ use anyhow::Result;
 use clap::Parser;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{fmt::Layer, layer::SubscriberExt, util::SubscriberInitExt, Layer as _};
-use vpn::{socks5::proxy_tunnels, ClientConfig, TcpTunnel};
+use vpn::{client::proxy_tunnels, ClientConfig, TcpTunnel};
 
 #[tokio::main]
 async fn main() -> Result<()> {

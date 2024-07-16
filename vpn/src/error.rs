@@ -64,6 +64,9 @@ pub enum StreamError {
 
 #[derive(Error, Debug)]
 pub enum ServiceError {
+    #[error("Tcp connect error: {0}")]
+    TcpConnectError(String),
+
     #[error("Unknow command: {0}")]
     UnknownCommand(String),
 

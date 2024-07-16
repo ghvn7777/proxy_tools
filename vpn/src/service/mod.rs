@@ -1,4 +1,5 @@
-mod client;
+pub mod client;
+mod client_tunnel;
 mod intervals;
 pub mod read_stream;
 mod server;
@@ -11,7 +12,7 @@ use tokio::net::{
     TcpStream,
 };
 
-pub use client::*;
+pub use client_tunnel::*;
 pub use intervals::interval;
 pub use read_stream::*;
 pub use write_stream::*;

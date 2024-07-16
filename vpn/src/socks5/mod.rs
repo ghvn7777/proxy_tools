@@ -2,13 +2,10 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use socks5_stream::Socks5Stream;
-use tokio::net::{TcpListener, TcpStream};
-use tracing::{debug, info, warn};
+use tokio::net::TcpStream;
+use tracing::{debug, warn};
 
-use crate::{
-    ClientConfig, ServiceError, Socks5ToClientMsg, Tunnel, TunnelReadPort, TunnelWritePort,
-    VpnError,
-};
+use crate::{ClientConfig, ServiceError, Socks5ToClientMsg, TunnelReader, TunnelWriter, VpnError};
 
 pub mod command;
 pub mod socks5_stream;
@@ -16,35 +13,6 @@ pub mod socks5_stream;
 pub struct Socks5ServerStream<S = TcpStream> {
     inner: Socks5Stream<S>,
     config: Arc<ClientConfig>,
-}
-
-pub async fn proxy_tunnels(
-    mut tunnels: Vec<Tunnel>,
-    config: Arc<ClientConfig>,
-) -> Result<(), VpnError> {
-    let socket_addr = format!("0.0.0.0:{}", config.port);
-    let listener = TcpListener::bind(socket_addr).await?;
-    info!("Socks5 server listening on {}", listener.local_addr()?);
-
-    let mut index = 0;
-
-    loop {
-        let socks5_config = config.clone();
-        let (stream, addr) = listener.accept().await?;
-        info!("Socks5 client {:?} connected", addr);
-
-        let tunnel: &mut Tunnel = tunnels.get_mut(index).expect("Get tunnel failed");
-        let (write_port, read_port) = tunnel.generate().await?;
-        tokio::spawn(async move {
-            let stream = Socks5ServerStream::new(stream, socks5_config);
-            stream
-                .process(write_port, read_port)
-                .await
-                .expect("proxy tunnel failed");
-        });
-
-        index = (index + 1) % tunnels.len();
-    }
 }
 
 impl Socks5ServerStream<TcpStream> {
@@ -57,8 +25,8 @@ impl Socks5ServerStream<TcpStream> {
 
     pub async fn process(
         self,
-        mut write_port: TunnelWritePort,
-        read_port: TunnelReadPort,
+        mut write_port: TunnelWriter,
+        read_port: TunnelReader,
     ) -> Result<(), VpnError> {
         let id = write_port.get_id();
         if id != read_port.get_id() {
