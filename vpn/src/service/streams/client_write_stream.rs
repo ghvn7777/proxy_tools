@@ -9,11 +9,11 @@ use crate::{
 };
 
 // TODO: read 和 write stream 里的 vpn 类型给反了
-pub struct VpnProstWriteStream<S> {
+pub struct VpnClientProstWriteStream<S> {
     inner: ProstWriteStream<S, CommandRequest>,
 }
 
-impl<S> VpnProstWriteStream<S>
+impl<S> VpnClientProstWriteStream<S>
 where
     S: AsyncWrite + Unpin + Send,
 {

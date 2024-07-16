@@ -6,8 +6,8 @@ use tokio_stream::StreamExt;
 use tracing::{error, info};
 
 use crate::{
-    interval, util::channel_bus, ChannelMap, ServiceError, Socks5ToClientMsg, Tunnel, VpnError,
-    VpnProstClientStream, HEARTBEAT_INTERVAL_MS,
+    interval, util::channel_bus, ChannelMap, ServiceError, Socks5ToClientMsg, Tunnel,
+    VpnClientStreamGenerator, VpnError, HEARTBEAT_INTERVAL_MS,
 };
 
 pub struct TcpTunnel;
@@ -54,7 +54,7 @@ async fn tcp_tunnel_core_task<S: Stream<Item = Socks5ToClientMsg> + Unpin>(
 
     let channel_map = Arc::new(ChannelMap::new());
     // Split client to Server stream
-    let (mut read_stream, mut write_stream) = VpnProstClientStream::generate(stream);
+    let (mut read_stream, mut write_stream) = VpnClientStreamGenerator::generate(stream);
 
     let r = async {
         read_stream

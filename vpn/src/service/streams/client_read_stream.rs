@@ -10,11 +10,11 @@ use crate::{
     pb::CommandResponse, ChannelMap, ProstReadStream, ServiceError, Socks5ToClientMsg, VpnError,
 };
 
-pub struct VpnProstReadStream<S> {
+pub struct VpnClientProstReadStream<S> {
     pub inner: ProstReadStream<S, CommandResponse>,
 }
 
-impl<S> VpnProstReadStream<S>
+impl<S> VpnClientProstReadStream<S>
 where
     S: AsyncRead + Unpin + Send,
 {
