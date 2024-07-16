@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::pb::VpnCommandResponse;
+use crate::pb::CommandResponse;
 
 #[derive(Error, Debug)]
 pub enum VpnError {
@@ -19,6 +19,9 @@ pub enum VpnError {
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
 
+    #[error("Service error: {0}")]
+    ServiceError(#[from] ServiceError),
+
     #[error("Socks5 error: {0}")]
     Socks5Error(#[from] Socks5Error),
 
@@ -32,7 +35,7 @@ pub enum VpnError {
     YamuxConnectionError(#[from] yamux::ConnectionError),
 
     #[error("Send stream data error: {0}")]
-    SendError(#[from] tokio::sync::mpsc::error::SendError<VpnCommandResponse>),
+    SendError(#[from] tokio::sync::mpsc::error::SendError<CommandResponse>),
 
     #[error("Tcp connect error: {0}")]
     TcpConnectkError(String),
@@ -48,6 +51,12 @@ pub enum VpnError {
 
     #[error("Certificate parse error: error to load {0} {0}")]
     CertificateParseError(&'static str, &'static str),
+}
+
+#[derive(Error, Debug)]
+pub enum ServiceError {
+    #[error("Unknow command: {0}")]
+    UnknownCommand(String),
 }
 
 #[derive(Error, Debug)]
@@ -110,8 +119,8 @@ pub enum AddrError {
     Custom(String),
 }
 
-impl From<VpnError> for VpnCommandResponse {
-    fn from(value: VpnError) -> Self {
-        VpnCommandResponse::new_error(value.to_string())
-    }
-}
+// impl From<VpnError> for CommandResponse {
+//     fn from(value: VpnError) -> Self {
+//         CommandResponse::new_error(value.to_string())
+//     }
+// }

@@ -15,22 +15,23 @@ message DestinationAddr {
   }
 }
 
-message VpnCommandRequest {
-  string connect_id = 1;
+message CommandRequest {
+  uint32 port_id = 1;
   oneof command {
       DestinationAddr connect = 2;
       bytes data = 3;
-      DestinationAddr disconnect = 4;
-      bool get_dat_stream = 5;
   }
 }
 
-message VpnCommandResponse {
-  enum Status {
-    Success = 0;
-    Failed = 1;
+message CommandResponse {
+  enum ConnectStatus {
+    OK = 0;
+    ERROR = 1;
   }
-  Status status = 11;
-  string message = 12; // 如果 status 不是成功，这里包含错误信息
-  bytes data = 13;
+
+  uint32 port_id = 1;
+  oneof response {
+      ConnectStatus connect = 2;
+      bytes data = 3;
+  }
 }

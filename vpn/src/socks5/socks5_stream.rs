@@ -1,5 +1,6 @@
 use std::net::SocketAddr;
 
+use super::command::{consts, Socks5Command};
 use anyhow::{Context, Result};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
@@ -7,8 +8,8 @@ use tracing::{debug, trace};
 
 use crate::{
     read_exact,
-    util::{read_address, socks5::consts, TargetAddr},
-    AuthInfo, AuthType, Socks5Command, Socks5Error, VpnError,
+    util::{read_address, TargetAddr},
+    AuthInfo, AuthType, Socks5Error, VpnError,
 };
 
 pub struct Socks5Stream<S> {

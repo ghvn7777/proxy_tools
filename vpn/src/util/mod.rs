@@ -1,6 +1,5 @@
-pub mod client;
-pub mod socks5;
-pub mod stream;
+pub mod client_config;
+pub mod stream_helper;
 mod target_addr;
 
 pub use target_addr::{read_address, TargetAddr};

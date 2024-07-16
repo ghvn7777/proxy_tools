@@ -7,7 +7,7 @@ use tokio::io::{AsyncRead, AsyncReadExt};
 use tracing::{debug, trace};
 
 use crate::{
-    pb::{VpnCommandRequest, VpnCommandResponse},
+    pb::{CommandRequest, CommandResponse},
     VpnError,
 };
 
@@ -68,6 +68,7 @@ where
             Ok(())
         }
     }
+
     /// 把一个完整的 frame decode 成一个 Message
     fn decode_frame(buf: &mut BytesMut) -> Result<Self, VpnError> {
         trace!("FrameCoder: decode_frame");
@@ -93,8 +94,8 @@ where
     }
 }
 
-impl FrameCoder for VpnCommandRequest {}
-impl FrameCoder for VpnCommandResponse {}
+impl FrameCoder for CommandRequest {}
+impl FrameCoder for CommandResponse {}
 
 pub fn decode_header(header: usize) -> (usize, bool) {
     let len = header & !COMPRESSION_BIT;

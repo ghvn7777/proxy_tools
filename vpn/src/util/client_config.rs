@@ -8,7 +8,7 @@ use clap::{
     Parser,
 };
 
-use super::socks5::consts;
+use crate::socks5::command::consts;
 
 /// # How to use it:
 ///
@@ -26,7 +26,7 @@ use super::socks5::consts;
         .literal(AnsiColor::Blue.on_default() | Effects::BOLD)
         .placeholder(AnsiColor::Cyan.on_default()))
 ]
-pub struct Socks5Config {
+pub struct ClientConfig {
     #[command(subcommand)]
     pub auth_type: AuthType,
 
@@ -39,6 +39,12 @@ pub struct Socks5Config {
         help = "Resolve DNS with local DNS server [default: true]"
     )]
     pub dns_resolve: bool,
+
+    #[arg(long, help = "Server url <IP:PORT>")]
+    pub server_url: String,
+
+    #[arg(long, help = "Tunnel count")]
+    pub tunnel_cnt: Option<u32>,
 }
 
 #[derive(Debug, Parser)]
