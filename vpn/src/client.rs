@@ -4,7 +4,7 @@ use anyhow::Result;
 use clap::Parser;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{fmt::Layer, layer::SubscriberExt, util::SubscriberInitExt, Layer as _};
-use vpn::{socks5::proxy_tunnels, tunnel::TcpTunnel, ClientConfig};
+use vpn::{socks5::proxy_tunnels, ClientConfig, TcpTunnel};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -15,8 +15,8 @@ async fn main() -> Result<()> {
 
     let cnt = config.tunnel_cnt.unwrap_or(1);
     let mut tunnels = Vec::with_capacity(cnt as _);
-    for i in 0..cnt {
-        tunnels.push(TcpTunnel::generate(i, config.server_url.clone()));
+    for _ in 0..cnt {
+        tunnels.push(TcpTunnel::generate(config.server_url.clone()));
     }
 
     proxy_tunnels(tunnels, config).await?;

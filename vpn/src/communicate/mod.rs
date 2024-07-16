@@ -1,4 +1,8 @@
+mod socks_and_client;
+
 use futures::channel::mpsc::Sender;
+
+pub use socks_and_client::*;
 
 pub enum TunnelPortMsg {
     ConnectOk(Vec<u8>),
@@ -25,9 +29,4 @@ pub enum TunnelMsg {
 
     Heartbeat,
     TunnelPortHalfDrop(u32),
-}
-
-pub enum ClientMsg {
-    SocksToClientMsg,
-    CommandResponse,
 }

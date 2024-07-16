@@ -8,7 +8,7 @@ use tracing::{debug, trace};
 
 use crate::{
     pb::{CommandRequest, CommandResponse},
-    VpnError,
+    StreamError, VpnError,
 };
 
 /// 长度整个占用 4 个字节
@@ -31,7 +31,7 @@ where
         let size = self.encoded_len();
 
         if size >= MAX_FRAME {
-            return Err(VpnError::FrameError);
+            return Err(StreamError::FrameTooLarge.into());
         }
 
         // 我们先写入长度，如果需要压缩，再重写压缩后的长度

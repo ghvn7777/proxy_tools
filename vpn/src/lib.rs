@@ -4,7 +4,6 @@ mod network;
 pub mod pb;
 mod service;
 pub mod socks5;
-pub mod tunnel;
 pub mod util;
 
 pub use communicate::*;

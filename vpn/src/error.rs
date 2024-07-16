@@ -13,11 +13,11 @@ pub enum VpnError {
     #[error("Failed to decode protobuf message")]
     DecodeError(#[from] prost::DecodeError),
 
-    #[error("Frame is larger than max size")]
-    FrameError,
-
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
+
+    #[error("Stream error: {0}")]
+    StreamError(#[from] StreamError),
 
     #[error("Service error: {0}")]
     ServiceError(#[from] ServiceError),
@@ -54,9 +54,24 @@ pub enum VpnError {
 }
 
 #[derive(Error, Debug)]
+pub enum StreamError {
+    #[error("Frame is larger than max size")]
+    FrameTooLarge,
+
+    #[error("Frame send error: {0}")]
+    FrameSendError(#[from] futures::channel::mpsc::SendError),
+}
+
+#[derive(Error, Debug)]
 pub enum ServiceError {
     #[error("Unknow command: {0}")]
     UnknownCommand(String),
+
+    #[error("Channel id exists: {0}")]
+    ChannelIdExists(u32),
+
+    #[error("Channel id error: {0}")]
+    ChannelIdError(String),
 }
 
 #[derive(Error, Debug)]

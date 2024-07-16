@@ -1,10 +1,14 @@
+use std::sync::Arc;
+
 use anyhow::Result;
 
 use futures::{channel::mpsc::Sender, StreamExt};
 use tokio::io::AsyncRead;
 use tracing::warn;
 
-use crate::{pb::CommandResponse, ProstReadStream, ServiceError, TunnelMsg, VpnError};
+use crate::{
+    pb::CommandResponse, ChannelMap, ProstReadStream, ServiceError, Socks5ToClientMsg, VpnError,
+};
 
 pub struct VpnProstReadStream<S> {
     pub inner: ProstReadStream<S, CommandResponse>,
@@ -24,7 +28,11 @@ where
         self.inner.next().await
     }
 
-    pub async fn process(&mut self, _sender: Sender<TunnelMsg>) -> Result<(), VpnError> {
+    pub async fn process(
+        &mut self,
+        _sender: Sender<Socks5ToClientMsg>,
+        _channel_map: Arc<ChannelMap>,
+    ) -> Result<(), VpnError> {
         while let Some(Ok(res)) = self.next().await {
             match res.response {
                 Some(_) => {

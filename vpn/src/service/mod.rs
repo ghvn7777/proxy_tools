@@ -1,15 +1,24 @@
-pub mod client_read;
-pub mod client_write;
+mod client;
+mod intervals;
+pub mod read_stream;
 mod server;
+pub mod write_stream;
 
+use dashmap::DashMap;
+use futures::channel::mpsc::Sender;
 use tokio::net::{
     tcp::{OwnedReadHalf, OwnedWriteHalf},
     TcpStream,
 };
 
-pub use client_read::*;
-pub use client_write::*;
+pub use client::*;
+pub use intervals::interval;
+pub use read_stream::*;
+pub use write_stream::*;
 
+use crate::ClientToSocks5Msg;
+
+pub type ChannelMap = DashMap<u32, Sender<ClientToSocks5Msg>>;
 pub const ALIVE_TIMEOUT_TIME_MS: u128 = 60000;
 
 pub struct VpnProstClientStream;

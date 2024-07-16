@@ -16,9 +16,9 @@ message DestinationAddr {
 }
 
 message CommandRequest {
-  uint32 port_id = 1;
+  uint32 id = 1;
   oneof command {
-      DestinationAddr connect = 2;
+      DestinationAddr tcp_connect = 2;
       bytes data = 3;
   }
 }
@@ -29,7 +29,7 @@ message CommandResponse {
     ERROR = 1;
   }
 
-  uint32 port_id = 1;
+  uint32 id = 1;
   oneof response {
       ConnectStatus connect = 2;
       bytes data = 3;

@@ -6,8 +6,8 @@ use tokio::net::{TcpListener, TcpStream};
 use tracing::{debug, info, warn};
 
 use crate::{
-    tunnel::{Tunnel, TunnelReadPort, TunnelWritePort},
-    ClientConfig, VpnError,
+    ClientConfig, ServiceError, Socks5ToClientMsg, Tunnel, TunnelReadPort, TunnelWritePort,
+    VpnError,
 };
 
 pub mod command;
@@ -34,8 +34,7 @@ pub async fn proxy_tunnels(
         info!("Socks5 client {:?} connected", addr);
 
         let tunnel: &mut Tunnel = tunnels.get_mut(index).expect("Get tunnel failed");
-        let (write_port, read_port) = tunnel.open_port().await;
-
+        let (write_port, read_port) = tunnel.generate().await?;
         tokio::spawn(async move {
             let stream = Socks5ServerStream::new(stream, socks5_config);
             stream
@@ -58,19 +57,47 @@ impl Socks5ServerStream<TcpStream> {
 
     pub async fn process(
         self,
-        _write_port: TunnelWritePort,
-        _read_port: TunnelReadPort,
+        mut write_port: TunnelWritePort,
+        read_port: TunnelReadPort,
     ) -> Result<(), VpnError> {
+        let id = write_port.get_id();
+        if id != read_port.get_id() {
+            warn!(
+                "Write port id: {}, read port id: {}",
+                id,
+                read_port.get_id()
+            );
+            return Err(
+                ServiceError::ChannelIdError(format!("{} != {}", id, read_port.get_id())).into(),
+            );
+        }
+
         let mut stream = self.inner;
         stream.handshake(&self.config.auth_type).await?;
-        let (cmd, _target_addr) = stream.request(self.config.dns_resolve).await?;
-        debug!("request good");
 
-        // TODO: 这里没有执行任何命令，后面想一下架构
-        if !(stream.execute_command(cmd).await?) {
+        let (cmd, target_addr) = stream.request(self.config.dns_resolve).await?;
+        debug!("socks5 get target {:?}, cmd: {:?}", target_addr, cmd);
+
+        if !(stream.check_command(cmd).await?) {
             warn!("Udp currently not supported");
             return Ok(());
         }
+
+        write_port
+            .send(Socks5ToClientMsg::TcpConnect(id, target_addr))
+            .await?;
+        // todo: wait read_port get connect success
+
+        // if res.status() == Status::Success {
+        //     // server connect target addr success
+        //     stream
+        //         .send_reply(0, SocketAddr::new([127, 0, 0, 1].into(), 0))
+        //         .await?;
+        // } else {
+        //     // server connect target addr failed
+        //     stream.send_reply(1, "0.0.0.0:0".parse().unwrap()).await?;
+        //     return Ok(());
+        // }
 
         Ok(())
     }

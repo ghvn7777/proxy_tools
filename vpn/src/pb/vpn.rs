@@ -30,7 +30,7 @@ pub mod destination_addr {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CommandRequest {
     #[prost(uint32, tag = "1")]
-    pub port_id: u32,
+    pub id: u32,
     #[prost(oneof = "command_request::Command", tags = "2, 3")]
     pub command: ::core::option::Option<command_request::Command>,
 }
@@ -40,7 +40,7 @@ pub mod command_request {
     #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum Command {
         #[prost(message, tag = "2")]
-        Connect(super::DestinationAddr),
+        TcpConnect(super::DestinationAddr),
         #[prost(bytes, tag = "3")]
         Data(::prost::alloc::vec::Vec<u8>),
     }
@@ -49,7 +49,7 @@ pub mod command_request {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CommandResponse {
     #[prost(uint32, tag = "1")]
-    pub port_id: u32,
+    pub id: u32,
     #[prost(oneof = "command_response::Response", tags = "2, 3")]
     pub response: ::core::option::Option<command_response::Response>,
 }
