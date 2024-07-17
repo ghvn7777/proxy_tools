@@ -1,7 +1,6 @@
 use std::{net::SocketAddr, sync::Arc};
 
 use anyhow::Result;
-use futures::join;
 use socks5_stream::Socks5Stream;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -10,7 +9,7 @@ use tokio::{
         TcpStream,
     },
 };
-use tracing::{debug, info, warn};
+use tracing::{debug, error, info, warn};
 
 use crate::{
     ClientConfig, ClientMsg, ClientToSocks5Msg, ServiceError, Socks5ToClientMsg, TunnelReader,
@@ -56,8 +55,8 @@ impl Socks5ServerStream<TcpStream> {
         let (cmd, target_addr) = stream.request(self.config.dns_resolve).await?;
         debug!("socks5 get target {:?}, cmd: {:?}", target_addr, cmd);
 
-        if !(stream.check_command(cmd).await?) {
-            warn!("Udp currently not supported");
+        if !(stream.check_command(&cmd).await?) {
+            error!("Udp currently not supported: {:?}", cmd);
             return Ok(());
         }
 
@@ -65,6 +64,10 @@ impl Socks5ServerStream<TcpStream> {
             .send(Socks5ToClientMsg::TcpConnect(id, target_addr).into())
             .await?;
 
+        // 注意这里的 read_port 不会收到心跳数据，因为这个数据路径是：
+        // server 返回给 client，client 通过 sender 发给 receivers，然后在 receivers 里面会过滤，
+        // 只有特定的一些数据才会通过 port_map 发到 read_port
+        // TODO: 如果数据类型容易混淆的话，可以用一个新的数据解构表示 report 的 tx
         let success = match read_port.read().await {
             Some(ClientToSocks5Msg::TcpConnectSuccess(id)) => {
                 info!("Read tcp connect success: {}", id);
@@ -87,7 +90,15 @@ impl Socks5ServerStream<TcpStream> {
             let (reader, writer) = stream.stream.into_split();
             let r = proxy_socks_read(reader, &mut write_port);
             let w = proxy_socks_write(writer, &mut read_port);
-            join!(r, w);
+            // join!(r, w);
+            tokio::select! {
+                _ = r => {
+                    info!("Socks5 proxy read end");
+                }
+                _ = w => {
+                    info!("Socks5 proxy write end");
+                }
+            };
             info!("Socks5 proxy finished id: {}", read_port.get_id());
         } else {
             stream.send_reply(1, "0.0.0.0:0".parse().unwrap()).await?;
@@ -99,41 +110,43 @@ impl Socks5ServerStream<TcpStream> {
             );
         }
 
-        // write_port.send(Socks5ToClientMsg::ClosePort(id).into()).await?;
         Ok(())
     }
 }
 
 async fn proxy_socks_read(mut reader: OwnedReadHalf, write_port: &mut TunnelWriter<ClientMsg>) {
-    let mut buf = vec![0u8; 1024 * 30];
+    let mut buf = vec![0u8; 1024 * 1000];
     let id = write_port.get_id();
     loop {
         match reader.read(&mut buf).await {
             Ok(0) => {
                 info!("Socks5 read 0 bytes, close port: {}", id);
-                write_port
-                    .send(Socks5ToClientMsg::ClosePort(id).into())
-                    .await
-                    .unwrap();
                 break;
             }
             Ok(n) => {
                 let data = buf[..n].to_vec();
                 info!("Socks5 read {} bytes", n);
-                write_port
+                if write_port
                     .send(Socks5ToClientMsg::Data(id, data).into())
                     .await
-                    .unwrap();
+                    .is_err()
+                {
+                    warn!("Socks5 read send data error, close port: {}", id);
+                    break;
+                }
             }
             Err(e) => {
                 warn!("Socks5 read error: {:?}", e);
-                write_port
-                    .send(Socks5ToClientMsg::ClosePort(id).into())
-                    .await
-                    .unwrap();
                 break;
             }
         }
+    }
+    if write_port
+        .send(Socks5ToClientMsg::ClosePort(id).into())
+        .await
+        .is_err()
+    {
+        error!("Socks5 read send close port error, close port: {}", id);
     }
 }
 
@@ -172,5 +185,14 @@ async fn proxy_socks_write(
                 break;
             }
         }
+    }
+
+    let id = read_port.get_id();
+    if read_port
+        .send(Socks5ToClientMsg::ClosePort(id).into())
+        .await
+        .is_err()
+    {
+        error!("Socks5 write send close port error");
     }
 }

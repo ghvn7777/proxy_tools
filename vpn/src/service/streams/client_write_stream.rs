@@ -5,7 +5,7 @@ use std::{
 
 use futures::{SinkExt, Stream, StreamExt};
 use tokio::io::AsyncWrite;
-use tracing::{debug, error, info, trace};
+use tracing::{debug, error, info, trace, warn};
 
 use crate::{
     pb::CommandRequest, ClientMsg, ClientPortMap, ClientToSocks5Msg, ProstWriteStream,
@@ -38,30 +38,27 @@ where
         let mut alive_time = Instant::now();
         loop {
             match msg_stream.next().await {
-                Some(msg) => {
-                    match msg {
-                        ClientMsg::Heartbeat => {
-                            info!("Client Msg receive heartbeat");
-                            if Instant::now() - alive_time
-                                > Duration::from_millis(ALIVE_TIMEOUT_TIME_MS)
-                            {
-                                // TODO: shutdown stream
-                                error!("Client heartbeat timeout");
-                                break;
-                            }
-                            let msg = CommandRequest::new_heartbeat();
-                            self.send(&msg).await?;
+                Some(msg) => match msg {
+                    ClientMsg::Heartbeat => {
+                        info!("Client Msg receive heartbeat");
+                        if Instant::now() - alive_time
+                            > Duration::from_millis(ALIVE_TIMEOUT_TIME_MS)
+                        {
+                            error!("Client heartbeat timeout");
+                            break;
                         }
-                        ClientMsg::Socks5ToClient(msg) => {
-                            alive_time = Instant::now();
-                            self.process_socks5_to_client(msg, &mut port_map).await?
-                        }
-                        ClientMsg::ClientToSocks5(msg) => {
-                            alive_time = Instant::now();
-                            self.process_client_to_socks5(msg, &mut port_map).await?
-                        }
+                        let msg = CommandRequest::new_heartbeat();
+                        self.send(&msg).await?;
                     }
-                }
+                    ClientMsg::Socks5ToClient(msg) => {
+                        alive_time = Instant::now();
+                        self.process_socks5_to_client(msg, &mut port_map).await?
+                    }
+                    ClientMsg::ClientToSocks5(msg) => {
+                        alive_time = Instant::now();
+                        self.process_client_to_socks5(msg, &mut port_map).await?
+                    }
+                },
                 None => {
                     error!("Tunnel get none message, stop processing...");
                     break;
@@ -88,8 +85,9 @@ where
             }
             Socks5ToClientMsg::ClosePort(id) => {
                 debug!("Close port {}: {:?}", id, port_map);
+                // 由 socks5 发出来的，说明 socks5 关闭了这个端口，所以这里直接把这个端口从 map 中移除就行
                 if port_map.remove(&id).is_none() {
-                    error!("process_socks5_to_client: Port id not found: {}", id);
+                    warn!("process_socks5_to_client: Port id not found: {}", id);
                 }
                 let msg = CommandRequest::new_close_port(id);
                 self.send(&msg).await?;
@@ -127,14 +125,20 @@ where
                         port_map.remove(&id);
                     }
                 } else {
-                    error!("process_client_to_socks5: Port id not found: {}", id);
+                    warn!("process_client_to_socks5: Port id not found: {}", id);
                 }
             }
             ClientToSocks5Msg::ClosePort(id) => {
                 debug!("process_client_to_socks5: Close port: {}", id);
-                if port_map.remove(&id).is_none() {
-                    error!("process_client_to_socks5: Port id not found: {}", id);
+                // 由服务端发过来的，要通知 socks5 关闭这个端口
+                if let Some(tx) = port_map.get_mut(&id) {
+                    if tx.send(ClientToSocks5Msg::ClosePort(id)).await.is_err() {
+                        error!("process_client_to_socks5: Send data failed");
+                    }
+                } else {
+                    error!("process_client_to_socks5: close port id not found: {}", id);
                 }
+                port_map.remove(&id);
             }
             ClientToSocks5Msg::TcpConnectSuccess(id) => {
                 debug!("process_client_to_socks5: TcpConnectSuccess: {}", id);
@@ -148,7 +152,7 @@ where
                         port_map.remove(&id);
                     }
                 } else {
-                    error!("process_client_to_socks5: Port id not found: {}", id);
+                    warn!("process_client_to_socks5: Port id not found: {}", id);
                 }
             }
             ClientToSocks5Msg::TcpConnectFailed(id) => {
@@ -163,7 +167,7 @@ where
                         port_map.remove(&id);
                     }
                 } else {
-                    error!("process_client_to_socks5: Port id not found: {}", id);
+                    warn!("process_client_to_socks5: Port id not found: {}", id);
                 }
             }
         }

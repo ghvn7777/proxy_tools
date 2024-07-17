@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use futures::{channel::mpsc::Sender, join, Stream};
+use futures::{channel::mpsc::Sender, Stream};
 use tokio::net::TcpStream;
 use tokio_stream::StreamExt;
 use tracing::{error, info, trace};
@@ -29,12 +29,8 @@ impl TcpTunnel {
                 )
                 .await
                 {
-                    Ok(_) => {
-                        info!("Tcp tunnel core task finished");
-                    }
-                    Err(e) => {
-                        error!("Tcp tunnel core task error: {:?}", e);
-                    }
+                    Ok(_) => info!("Tcp tunnel core task finished"),
+                    Err(e) => error!("Tcp tunnel core task error: {:?}", e),
                 }
             }
         });
@@ -79,7 +75,15 @@ async fn tcp_tunnel_core_task<S: Stream<Item = ClientMsg> + Unpin>(
         }
     };
 
-    join!(r, w);
+    // join!(r, w);
+    tokio::select! {
+        _ = r => {
+            info!("Tcp tunnel core task read stream end");
+        }
+        _ = w => {
+            info!("Tcp tunnel core task write stream end");
+        }
+    };
 
     info!("Tcp tunnel core task finished");
 
