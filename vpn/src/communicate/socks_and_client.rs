@@ -7,13 +7,13 @@ pub enum Socks5ToClientMsg {
     InitChannel(u32, Sender<SocksMsg>),
     TcpConnect(u32, TargetAddr),
     ClosePort(u32),
-    Data(u32, Vec<u8>),
+    Data(u32, Box<Vec<u8>>),
 }
 
 #[derive(Debug, Clone)]
 pub enum ClientToSocks5Msg {
     Heartbeat,
-    Data(u32, Vec<u8>),
+    Data(u32, Box<Vec<u8>>),
     ClosePort(u32),
     TcpConnectSuccess(u32),
     TcpConnectFailed(u32),
@@ -28,7 +28,7 @@ pub enum ClientMsg {
 
 #[derive(Debug, Clone)]
 pub enum SocksMsg {
-    Data(Vec<u8>),
+    Data(Box<Vec<u8>>),
     ClosePort(u32),
     TcpConnectSuccess(u32),
     TcpConnectFailed(u32),

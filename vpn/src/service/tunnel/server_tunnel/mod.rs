@@ -62,7 +62,7 @@ async fn read_remote_tcp(
     mut stream: OwnedReadHalf,
     mut writer_tunnel: TunnelWriter<ServerMsg>,
 ) {
-    let mut buf = vec![0; 1024 * 1000];
+    let mut buf = vec![0u8; 1024];
     loop {
         match stream.read(&mut buf).await {
             Ok(0) => {
@@ -71,7 +71,9 @@ async fn read_remote_tcp(
             }
 
             Ok(n) => {
-                let msg = RemoteToServer::Data(id, buf[..n].to_vec()).into();
+                let mut buf2 = Vec::with_capacity(n);
+                buf2.extend_from_slice(&buf[0..n]);
+                let msg = RemoteToServer::Data(id, Box::new(buf2)).into();
                 info!("Read remote tcp data len: {:?}", n);
                 if writer_tunnel.send(msg).await.is_err() {
                     error!("Write tunnel error");

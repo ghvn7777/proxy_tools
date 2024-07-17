@@ -67,7 +67,7 @@ where
                 Some(Command::Data(data)) => {
                     debug!("stream reader data len: {:?}", data.data.len());
                     if sender
-                        .send(ServerToRemote::Data(data.id, data.data).into())
+                        .send(ServerToRemote::Data(data.id, Box::new(data.data)).into())
                         .await
                         .is_err()
                     {

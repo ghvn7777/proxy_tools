@@ -49,7 +49,7 @@ where
                         data.id, data.data
                     );
                     if sender
-                        .send(ClientToSocks5Msg::Data(data.id, data.data).into())
+                        .send(ClientToSocks5Msg::Data(data.id, Box::new(data.data)).into())
                         .await
                         .is_err()
                     {
