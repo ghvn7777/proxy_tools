@@ -1,4 +1,4 @@
 c:
-  cargo run --bin client -- --server-url 127.0.0.1:8080 no-auth
+  cargo run -r --bin client -- --server-url 127.0.0.1:9527 no-auth
 s:
-  cargo run --bin server
+  cargo run -r --bin server
