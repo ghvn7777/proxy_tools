@@ -9,29 +9,26 @@ use tokio::io::{AsyncRead, AsyncWrite};
 
 use crate::{read_frame, FrameCoder, VpnError};
 
-/// 处理 KV server prost frame 的 stream
-pub struct ProstStream<S, In, Out> {
-    // innner stream
+pub struct ProstReadStream<S, In> {
+    // inner stream
     stream: S,
-    // 写缓存
-    wbuf: BytesMut,
-    // 写入了多少字节
-    written: usize,
-    // 读缓存
     rbuf: BytesMut,
-
-    // 类型占位符
     _in: PhantomData<In>,
+}
+
+pub struct ProstWriteStream<S, Out> {
+    stream: S,
+    wbuf: BytesMut,
+    written: usize,
     _out: PhantomData<Out>,
 }
 
-impl<S, In, Out> Stream for ProstStream<S, In, Out>
+/// 实现 Stream trait，读取数据功能，可以调用 next() 异步获取下一个数据
+impl<S, In> Stream for ProstReadStream<S, In>
 where
-    S: AsyncRead + AsyncWrite + Unpin + Send,
+    S: AsyncRead + Unpin + Send,
     In: Unpin + Send + FrameCoder,
-    Out: Unpin + Send,
 {
-    /// 当调用 next() 时，得到 Result<In, VpnError>
     type Item = Result<In, VpnError>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -54,10 +51,9 @@ where
 }
 
 /// 当调用 send() 时，会把 Out 发出去
-impl<S, In, Out> Sink<&Out> for ProstStream<S, In, Out>
+impl<S, Out> Sink<&Out> for ProstWriteStream<S, Out>
 where
-    S: AsyncRead + AsyncWrite + Unpin,
-    In: Unpin + Send,
+    S: AsyncWrite + Unpin + Send,
     Out: Unpin + Send + FrameCoder,
 {
     /// 如果发送出错，会返回 VpnError
@@ -104,20 +100,33 @@ where
 
 // 一般来说，如果我们的 Stream 是 Unpin，最好实现一下
 // Unpin 不像 Send/Sync 会自动实现
-impl<S, In, Out> Unpin for ProstStream<S, In, Out> where S: Unpin {}
+impl<S, In> Unpin for ProstReadStream<S, In> where S: Unpin {}
+impl<S, Out> Unpin for ProstWriteStream<S, Out> where S: Unpin {}
 
-impl<S, In, Out> ProstStream<S, In, Out>
+impl<S, In> ProstReadStream<S, In>
 where
-    S: AsyncRead + AsyncWrite + Send + Unpin,
+    S: AsyncRead + Send + Unpin,
 {
-    /// 创建一个 ProstStream
+    /// 创建一个 ProstReadStream
     pub fn new(stream: S) -> Self {
         Self {
             stream,
-            written: 0,
-            wbuf: BytesMut::new(),
             rbuf: BytesMut::new(),
             _in: PhantomData,
+        }
+    }
+}
+
+impl<S, Out> ProstWriteStream<S, Out>
+where
+    S: AsyncWrite + Unpin,
+    Out: Unpin + Send + FrameCoder,
+{
+    pub fn new(stream: S) -> Self {
+        Self {
+            stream,
+            wbuf: BytesMut::new(),
+            written: 0,
             _out: PhantomData,
         }
     }

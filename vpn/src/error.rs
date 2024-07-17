@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::pb::VpnCommandResponse;
+use crate::pb::CommandResponse;
 
 #[derive(Error, Debug)]
 pub enum VpnError {
@@ -13,11 +13,14 @@ pub enum VpnError {
     #[error("Failed to decode protobuf message")]
     DecodeError(#[from] prost::DecodeError),
 
-    #[error("Frame is larger than max size")]
-    FrameError,
-
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
+
+    #[error("Stream error: {0}")]
+    StreamError(#[from] StreamError),
+
+    #[error("Service error: {0}")]
+    ServiceError(#[from] ServiceError),
 
     #[error("Socks5 error: {0}")]
     Socks5Error(#[from] Socks5Error),
@@ -32,7 +35,7 @@ pub enum VpnError {
     YamuxConnectionError(#[from] yamux::ConnectionError),
 
     #[error("Send stream data error: {0}")]
-    SendError(#[from] tokio::sync::mpsc::error::SendError<VpnCommandResponse>),
+    SendError(#[from] tokio::sync::mpsc::error::SendError<CommandResponse>),
 
     #[error("Tcp connect error: {0}")]
     TcpConnectkError(String),
@@ -48,6 +51,30 @@ pub enum VpnError {
 
     #[error("Certificate parse error: error to load {0} {0}")]
     CertificateParseError(&'static str, &'static str),
+}
+
+#[derive(Error, Debug)]
+pub enum StreamError {
+    #[error("Frame is larger than max size")]
+    FrameTooLarge,
+
+    #[error("Frame send error: {0}")]
+    FrameSendError(#[from] futures::channel::mpsc::SendError),
+}
+
+#[derive(Error, Debug)]
+pub enum ServiceError {
+    #[error("Tcp connect error: {0}")]
+    TcpConnectError(String),
+
+    #[error("Unknow command: {0}")]
+    UnknownCommand(String),
+
+    #[error("Channel id exists: {0}")]
+    ChannelIdExists(u32),
+
+    #[error("Channel id error: {0}")]
+    ChannelIdError(String),
 }
 
 #[derive(Error, Debug)]
@@ -110,8 +137,8 @@ pub enum AddrError {
     Custom(String),
 }
 
-impl From<VpnError> for VpnCommandResponse {
-    fn from(value: VpnError) -> Self {
-        VpnCommandResponse::new_error(value.to_string())
-    }
-}
+// impl From<VpnError> for CommandResponse {
+//     fn from(value: VpnError) -> Self {
+//         CommandResponse::new_error(value.to_string())
+//     }
+// }

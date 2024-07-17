@@ -1,0 +1,166 @@
+use std::{
+    collections::HashMap,
+    time::{Duration, Instant},
+};
+
+use futures::{SinkExt, Stream, StreamExt};
+use tokio::io::AsyncWrite;
+use tracing::{error, info, trace};
+
+use crate::{
+    pb::CommandRequest, ClientMsg, ClientPortMap, ClientToSocks5Msg, ProstWriteStream,
+    ServiceError, Socks5ToClientMsg, VpnError, ALIVE_TIMEOUT_TIME_MS,
+};
+
+pub struct VpnClientProstWriteStream<S> {
+    inner: ProstWriteStream<S, CommandRequest>,
+}
+
+impl<S> VpnClientProstWriteStream<S>
+where
+    S: AsyncWrite + Unpin + Send,
+{
+    pub fn new(stream: S) -> Self {
+        Self {
+            inner: ProstWriteStream::new(stream),
+        }
+    }
+
+    pub async fn send(&mut self, msg: &CommandRequest) -> Result<(), VpnError> {
+        self.inner.send(msg).await
+    }
+
+    pub async fn process<T>(&mut self, mut msg_stream: T) -> Result<(), VpnError>
+    where
+        T: Stream<Item = ClientMsg> + Unpin,
+    {
+        let mut port_map = HashMap::new();
+        let mut alive_time = Instant::now();
+        loop {
+            match msg_stream.next().await {
+                Some(msg) => {
+                    match msg {
+                        ClientMsg::Heartbeat => {
+                            info!("Client WriteStream receive heartbeat");
+                            if Instant::now() - alive_time
+                                > Duration::from_millis(ALIVE_TIMEOUT_TIME_MS)
+                            {
+                                // TODO: shutdown stream
+                                error!("Client heartbeat timeout");
+                                break;
+                            }
+                        }
+                        ClientMsg::Socks5ToClient(msg) => {
+                            alive_time = Instant::now();
+                            self.process_socks5_to_client(msg, &mut port_map).await?
+                        }
+                        ClientMsg::ClientToSocks5(msg) => {
+                            alive_time = Instant::now();
+                            self.process_client_to_socks5(msg, &mut port_map).await?
+                        }
+                    }
+                }
+                None => {
+                    error!("Tunnel get none message, stop processing...");
+                    break;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    pub async fn process_socks5_to_client(
+        &mut self,
+        msg: Socks5ToClientMsg,
+        port_map: &mut ClientPortMap,
+    ) -> Result<(), VpnError> {
+        trace!("process_socks5_to_client: {:?}", msg);
+        match msg {
+            Socks5ToClientMsg::InitChannel(id, tx) => {
+                if port_map.insert(id, tx).is_some() {
+                    error!("Init channel failed, channel id already exists");
+                    return Err(ServiceError::ChannelIdExists(id).into());
+                }
+                info!("process_socks5_to_client: Init channel: {:?}", port_map);
+            }
+            Socks5ToClientMsg::ClosePort(id) => {
+                info!("Close port {}: {:?}", id, port_map);
+                if port_map.remove(&id).is_none() {
+                    error!("process_socks5_to_client: Port id not found: {}", id);
+                }
+                let msg = CommandRequest::new_close_port(id);
+                self.send(&msg).await?;
+            }
+            Socks5ToClientMsg::TcpConnect(id, addr) => {
+                info!("process_socks5_to_client: TcpConnect: {} -- {:?}", id, addr);
+                let msg = CommandRequest::new_tcp_connect(id, addr);
+                self.send(&msg).await?;
+            }
+            Socks5ToClientMsg::Data(id, data) => {
+                info!("process_socks5_to_client data: {}, {:?}", id, data);
+                let msg = CommandRequest::new_data(id, data);
+                self.send(&msg).await?;
+            }
+        }
+        Ok(())
+    }
+
+    pub async fn process_client_to_socks5(
+        &mut self,
+        msg: ClientToSocks5Msg,
+        port_map: &mut ClientPortMap,
+    ) -> Result<(), VpnError> {
+        trace!("process_client_to_socks5: {:?}", msg);
+        match msg {
+            ClientToSocks5Msg::Data(id, data) => {
+                info!("process_client_to_socks5 data: {}, {:?}", id, data);
+                if let Some(tx) = port_map.get_mut(&id) {
+                    if tx.send(ClientToSocks5Msg::Data(id, data)).await.is_err() {
+                        error!("process_client_to_socks5: Send data failed");
+                        port_map.remove(&id);
+                    }
+                } else {
+                    error!("process_client_to_socks5: Port id not found: {}", id);
+                }
+            }
+            ClientToSocks5Msg::ClosePort(id) => {
+                info!("process_client_to_socks5: Close port: {}", id);
+                if port_map.remove(&id).is_none() {
+                    error!("process_client_to_socks5: Port id not found: {}", id);
+                }
+            }
+            ClientToSocks5Msg::TcpConnectSuccess(id) => {
+                info!("process_client_to_socks5: TcpConnectSuccess: {}", id);
+                if let Some(tx) = port_map.get_mut(&id) {
+                    if tx
+                        .send(ClientToSocks5Msg::TcpConnectSuccess(id))
+                        .await
+                        .is_err()
+                    {
+                        error!("process_client_to_socks5: Send TcpConnectSuccess failed");
+                        port_map.remove(&id);
+                    }
+                } else {
+                    error!("process_client_to_socks5: Port id not found: {}", id);
+                }
+            }
+            ClientToSocks5Msg::TcpConnectFailed(id) => {
+                info!("process_client_to_socks5: TcpConnectFailed: {}", id);
+                if let Some(tx) = port_map.get_mut(&id) {
+                    if tx
+                        .send(ClientToSocks5Msg::TcpConnectFailed(id))
+                        .await
+                        .is_err()
+                    {
+                        error!("process_client_to_socks5: Send TcpConnectFailed failed");
+                        port_map.remove(&id);
+                    }
+                } else {
+                    error!("process_client_to_socks5: Port id not found: {}", id);
+                }
+            }
+        }
+        Ok(())
+    }
+}

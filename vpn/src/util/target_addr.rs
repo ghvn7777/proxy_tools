@@ -1,6 +1,6 @@
 use crate::pb::DestinationAddr;
 use crate::read_exact;
-use crate::util::socks5::consts;
+use crate::socks5::command::consts;
 use crate::AddrError;
 use crate::Socks5Error;
 use crate::VpnError;

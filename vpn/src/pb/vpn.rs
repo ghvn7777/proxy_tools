@@ -28,64 +28,57 @@ pub mod destination_addr {
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct VpnCommandRequest {
-    #[prost(string, tag = "1")]
-    pub connect_id: ::prost::alloc::string::String,
-    #[prost(oneof = "vpn_command_request::Command", tags = "2, 3, 4, 5")]
-    pub command: ::core::option::Option<vpn_command_request::Command>,
+pub struct TcpConnect {
+    #[prost(message, optional, tag = "1")]
+    pub destination: ::core::option::Option<DestinationAddr>,
+    #[prost(uint32, tag = "2")]
+    pub id: u32,
 }
-/// Nested message and enum types in `VpnCommandRequest`.
-pub mod vpn_command_request {
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct Data {
+    #[prost(uint32, tag = "1")]
+    pub id: u32,
+    #[prost(bytes = "vec", tag = "2")]
+    pub data: ::prost::alloc::vec::Vec<u8>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CommandRequest {
+    #[prost(oneof = "command_request::Command", tags = "2, 3, 4")]
+    pub command: ::core::option::Option<command_request::Command>,
+}
+/// Nested message and enum types in `CommandRequest`.
+pub mod command_request {
     #[allow(clippy::derive_partial_eq_without_eq)]
     #[derive(Clone, PartialEq, ::prost::Oneof)]
     pub enum Command {
         #[prost(message, tag = "2")]
-        Connect(super::DestinationAddr),
-        #[prost(bytes, tag = "3")]
-        Data(::prost::alloc::vec::Vec<u8>),
-        #[prost(message, tag = "4")]
-        Disconnect(super::DestinationAddr),
-        #[prost(bool, tag = "5")]
-        GetDatStream(bool),
+        TcpConnect(super::TcpConnect),
+        #[prost(message, tag = "3")]
+        Data(super::Data),
+        #[prost(uint32, tag = "4")]
+        ClosePort(u32),
     }
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct VpnCommandResponse {
-    #[prost(enumeration = "vpn_command_response::Status", tag = "11")]
-    pub status: i32,
-    /// 如果 status 不是成功，这里包含错误信息
-    #[prost(string, tag = "12")]
-    pub message: ::prost::alloc::string::String,
-    #[prost(bytes = "vec", tag = "13")]
-    pub data: ::prost::alloc::vec::Vec<u8>,
+pub struct CommandResponse {
+    #[prost(oneof = "command_response::Response", tags = "1, 2, 3, 4")]
+    pub response: ::core::option::Option<command_response::Response>,
 }
-/// Nested message and enum types in `VpnCommandResponse`.
-pub mod vpn_command_response {
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
-    #[repr(i32)]
-    pub enum Status {
-        Success = 0,
-        Failed = 1,
-    }
-    impl Status {
-        /// String value of the enum field names used in the ProtoBuf definition.
-        ///
-        /// The values are not transformed in any way and thus are considered stable
-        /// (if the ProtoBuf definition does not change) and safe for programmatic use.
-        pub fn as_str_name(&self) -> &'static str {
-            match self {
-                Status::Success => "Success",
-                Status::Failed => "Failed",
-            }
-        }
-        /// Creates an enum from field names used in the ProtoBuf definition.
-        pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
-            match value {
-                "Success" => Some(Self::Success),
-                "Failed" => Some(Self::Failed),
-                _ => None,
-            }
-        }
+/// Nested message and enum types in `CommandResponse`.
+pub mod command_response {
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Response {
+        #[prost(message, tag = "1")]
+        Data(super::Data),
+        #[prost(uint32, tag = "2")]
+        ClosePort(u32),
+        #[prost(uint32, tag = "3")]
+        TcpConnectSuccess(u32),
+        #[prost(uint32, tag = "4")]
+        TcpConnectFailed(u32),
     }
 }

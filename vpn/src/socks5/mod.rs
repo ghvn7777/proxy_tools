@@ -1,167 +1,173 @@
-mod socks5_stream;
+use std::{net::SocketAddr, sync::Arc};
 
-use std::{net::SocketAddr, sync::Arc, time::Duration};
-
-use futures::{SinkExt, StreamExt};
+use anyhow::Result;
+use futures::join;
+use socks5_stream::Socks5Stream;
 use tokio::{
-    io::{AsyncRead, AsyncWrite},
-    net::TcpStream,
-    time::timeout,
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::{
+        tcp::{OwnedReadHalf, OwnedWriteHalf},
+        TcpStream,
+    },
 };
-use tracing::{debug, info, trace, warn};
-use uuid::Uuid;
+use tracing::{debug, info, warn};
 
 use crate::{
-    pb::{vpn_command_response::Status, VpnCommandRequest, VpnCommandResponse},
-    ProstStream, Socks5Config, TlsClientConnector, VpnError, YamuxCtrl,
+    ClientConfig, ClientMsg, ClientToSocks5Msg, ServiceError, Socks5ToClientMsg, TunnelReader,
+    TunnelWriter, VpnError,
 };
-pub use socks5_stream::Socks5Stream;
 
-pub struct Socks5ServerStream<S> {
+pub mod command;
+pub mod socks5_stream;
+
+pub struct Socks5ServerStream<S = TcpStream> {
     inner: Socks5Stream<S>,
-    config: Arc<Socks5Config>,
+    config: Arc<ClientConfig>,
 }
 
-pub struct ProstClientStream<S> {
-    inner: ProstStream<S, VpnCommandResponse, VpnCommandRequest>,
-}
-
-impl<S> Socks5ServerStream<S>
-where
-    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
-{
-    pub fn new(stream: S, config: Arc<Socks5Config>) -> Self {
+impl Socks5ServerStream<TcpStream> {
+    pub fn new(stream: TcpStream, config: Arc<ClientConfig>) -> Self {
         Self {
             inner: Socks5Stream::new(stream),
             config,
         }
     }
 
-    pub async fn process(self) -> Result<(), VpnError> {
-        trace!("Socks5ServerStream: processing...");
-        let uuid = Uuid::new_v4().to_string();
+    pub async fn process(
+        self,
+        mut write_port: TunnelWriter<ClientMsg>,
+        mut read_port: TunnelReader<ClientMsg, ClientToSocks5Msg>,
+    ) -> Result<(), VpnError> {
+        let id = write_port.get_id();
+        if id != read_port.get_id() {
+            warn!(
+                "Write port id: {}, read port id: {}",
+                id,
+                read_port.get_id()
+            );
+            return Err(
+                ServiceError::ChannelIdError(format!("{} != {}", id, read_port.get_id())).into(),
+            );
+        }
 
         let mut stream = self.inner;
         stream.handshake(&self.config.auth_type).await?;
-        let (cmd, target_addr) = stream.request(self.config.dns_resolve).await?;
-        debug!("request good");
 
-        // TODO: 这里没有执行任何命令，后面想一下架构
-        if !(stream.execute_command(cmd).await?) {
+        let (cmd, target_addr) = stream.request(self.config.dns_resolve).await?;
+        debug!("socks5 get target {:?}, cmd: {:?}", target_addr, cmd);
+
+        if !(stream.check_command(cmd).await?) {
             warn!("Udp currently not supported");
             return Ok(());
         }
 
-        let ca_cert = include_str!("../../fixtures/ca.cert");
-        let connector = TlsClientConnector::new("kvserver.acme.inc", None, Some(ca_cert))?;
+        write_port
+            .send(Socks5ToClientMsg::TcpConnect(id, target_addr).into())
+            .await?;
 
-        // todo: loop get stream send to server
-        let addr = "127.0.0.1:9527";
-        let client_stream = TcpStream::connect(addr).await?;
-        let client_stream = connector.connect(client_stream).await?;
-        let mut ctrl = YamuxCtrl::new_client(client_stream, None);
-        let client_stream = ctrl.open_stream().await?;
+        let success = match read_port.read().await {
+            Some(ClientToSocks5Msg::TcpConnectSuccess(id)) => {
+                info!("Read tcp connect success: {}", id);
+                true
+            }
+            Some(msg) => {
+                warn!("Read port get unexpected msg: {:?}", msg);
+                false
+            }
+            None => {
+                warn!("Read port get None");
+                false
+            }
+        };
 
-        let mut client = ProstClientStream::new(client_stream);
-        let cmd = VpnCommandRequest::new_connect(uuid.clone(), target_addr);
-        info!("Send a new cmd: {:?}", cmd);
-        let res = client.execute_unary(&cmd).await?;
-        info!("Got a new res: {:?}", res);
-
-        if res.status() == Status::Success {
-            // server connect target addr success
+        if success {
             stream
                 .send_reply(0, SocketAddr::new([127, 0, 0, 1].into(), 0))
                 .await?;
+            let (reader, writer) = stream.stream.into_split();
+            let r = proxy_socks_read(reader, &mut write_port);
+            let w = proxy_socks_write(writer, &mut read_port);
+            join!(r, w);
+            info!("Socks5 proxy finished: {}", read_port.get_id());
         } else {
-            // server connect target addr failed
             stream.send_reply(1, "0.0.0.0:0".parse().unwrap()).await?;
-            return Ok(());
+            write_port
+                .send(Socks5ToClientMsg::ClosePort(id).into())
+                .await?;
+            return Err(
+                ServiceError::TcpConnectError("Read port call read() error".to_string()).into(),
+            );
         }
 
-        let mut buf = vec![0u8; 1024 * 1000];
-        loop {
-            // if let Some(Ok(res)) = client.inner.next().await {
-            //     info!("Got a new data: {:?}", res);
-            //     if res.status() == Status::Success && res.data.len() > 0 {
-            //         stream.write(&res.data).await.unwrap();
-            //     }
-            // }
-            let res = client.inner.next();
-            let res = match timeout(Duration::from_millis(20), res).await {
-                Ok(result) => result,
-                Err(_) => None,
-            };
-            if res.is_some() {
-                let res = res.unwrap().unwrap();
-                info!("Got a new data: {:?}", res);
-                if res.status() == Status::Success && !res.data.is_empty() {
-                    stream.write(&res.data).await.unwrap();
-                }
-            }
-
-            // let n = stream.read(&mut buf).await?;
-            // info!("get socks data size: {:?}", n);
-            // if n == 0 {
-            //     continue;
-            // }
-
-            // let cmd = VpnCommandRequest::new_data(uuid.clone(), buf[..n].to_vec());
-            // info!("Send a new data: {:?}", cmd);
-            // let ret = client.execute_unary(&cmd).await.unwrap();
-            // info!("Got a new res: {:?}", ret);
-
-            let res = stream.read(&mut buf);
-            if let Ok(res) = timeout(Duration::from_millis(20), res).await {
-                if res.is_ok() {
-                    let n = res.unwrap();
-                    info!("get socks data size: {:?}", n);
-                    if n == 0 {
-                        continue;
-                    }
-                    let cmd = VpnCommandRequest::new_data(uuid.clone(), buf[..n].to_vec());
-                    info!("Send a new data: {:?}", cmd);
-                    let ret = client.execute_unary(&cmd).await.unwrap();
-                    info!("Got a new res: {:?}", ret);
-                }
-            }
-        }
-
-        #[allow(unreachable_code)]
+        // write_port.send(Socks5ToClientMsg::ClosePort(id).into()).await?;
         Ok(())
     }
 }
 
-impl<S> ProstClientStream<S>
-where
-    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
-{
-    pub fn new(stream: S) -> Self {
-        Self {
-            inner: ProstStream::new(stream),
+async fn proxy_socks_read(mut reader: OwnedReadHalf, write_port: &mut TunnelWriter<ClientMsg>) {
+    let mut buf = vec![0u8; 1024 * 30];
+    let id = write_port.get_id();
+    loop {
+        match reader.read(&mut buf).await {
+            Ok(0) => {
+                info!("Socks5 read 0 bytes, close port: {}", id);
+                write_port
+                    .send(Socks5ToClientMsg::ClosePort(id).into())
+                    .await
+                    .unwrap();
+                break;
+            }
+            Ok(n) => {
+                let data = buf[..n].to_vec();
+                info!("Socks5 read {} bytes", n);
+                write_port
+                    .send(Socks5ToClientMsg::Data(id, data).into())
+                    .await
+                    .unwrap();
+            }
+            Err(e) => {
+                warn!("Socks5 read error: {:?}", e);
+                write_port
+                    .send(Socks5ToClientMsg::ClosePort(id).into())
+                    .await
+                    .unwrap();
+                break;
+            }
         }
     }
+}
 
-    pub async fn execute_unary(
-        &mut self,
-        cmd: &VpnCommandRequest,
-    ) -> Result<VpnCommandResponse, VpnError> {
-        trace!("ProstClientStream: execute_unary");
-        let stream = &mut self.inner;
-        stream.send(cmd).await?;
+async fn proxy_socks_write(
+    mut writer: OwnedWriteHalf,
+    read_port: &mut TunnelReader<ClientMsg, ClientToSocks5Msg>,
+) {
+    let id = read_port.get_id();
+    loop {
+        match read_port.read().await {
+            Some(ClientToSocks5Msg::Data(get_id, data)) => {
+                if id != get_id {
+                    warn!("Socks5 write get unexpected id: {}", id);
+                    break;
+                }
 
-        match stream.next().await {
-            Some(v) => v,
-            None => Err(VpnError::InternalError("Didn't get any response".into())),
+                info!("Socks5 write {} bytes", data.len());
+                if writer.write_all(&data).await.is_err() {
+                    warn!("Socks5 write error, close port: {}", id);
+                    break;
+                }
+            }
+            Some(ClientToSocks5Msg::ClosePort(_)) => {
+                info!("Socks5 write close port: {}", id);
+                break;
+            }
+            Some(msg) => {
+                warn!("Socks5 write get unexpected msg: {:?}", msg);
+                break;
+            }
+            None => {
+                warn!("Socks5 write get None");
+                break;
+            }
         }
     }
-
-    // pub async fn execute_streaming(self, cmd: &CommandRequest) -> Result<StreamResult, KvError> {
-    //     let mut stream = self.inner;
-
-    //     stream.send(cmd).await?;
-    //     stream.close().await?;
-
-    //     StreamResult::new(stream).await
-    // }
 }

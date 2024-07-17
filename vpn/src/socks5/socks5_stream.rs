@@ -1,5 +1,6 @@
 use std::net::SocketAddr;
 
+use super::command::{consts, Socks5Command};
 use anyhow::{Context, Result};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
@@ -7,8 +8,8 @@ use tracing::{debug, trace};
 
 use crate::{
     read_exact,
-    util::{read_address, socks5::consts, TargetAddr},
-    AuthInfo, AuthType, Socks5Command, Socks5Error, VpnError,
+    util::{read_address, TargetAddr},
+    AuthInfo, AuthType, Socks5Error, VpnError,
 };
 
 pub struct Socks5Stream<S> {
@@ -51,7 +52,7 @@ where
     }
 
     /// Execute the socks5 command that the client wants.
-    pub async fn execute_command(&mut self, cmd: Socks5Command) -> Result<bool, VpnError> {
+    pub async fn check_command(&mut self, cmd: Socks5Command) -> Result<bool, VpnError> {
         match cmd {
             Socks5Command::TCPBind => Err(Socks5Error::SocksCommandNotSupported.into()),
             Socks5Command::TCPConnect => Ok(true),
