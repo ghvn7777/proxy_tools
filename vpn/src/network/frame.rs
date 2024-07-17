@@ -4,7 +4,7 @@ use bytes::{Buf, BufMut, BytesMut};
 use flate2::{read::GzDecoder, write::GzEncoder, Compression};
 use prost::Message;
 use tokio::io::{AsyncRead, AsyncReadExt};
-use tracing::trace;
+use tracing::{debug, trace};
 
 use crate::{
     pb::{CommandRequest, CommandResponse},
@@ -37,7 +37,7 @@ where
         // 我们先写入长度，如果需要压缩，再重写压缩后的长度
         buf.put_u32(size as _);
 
-        // debug!("Encode a frame: size {}", size);
+        debug!("Encode a frame: size {}", size);
 
         if size > COMPRESSION_LIMIT {
             let mut buf1 = Vec::with_capacity(size);
@@ -75,7 +75,7 @@ where
         // 先取 4 字节，从中拿出长度和 compression bit
         let header = buf.get_u32() as usize;
         let (len, compressed) = decode_header(header);
-        // debug!("Got a frame: msg len {}, compressed {}", len, compressed);
+        debug!("Got a frame: msg len {}, compressed {}", len, compressed);
 
         if compressed {
             // 解压缩

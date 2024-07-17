@@ -13,7 +13,7 @@ async fn main() -> Result<()> {
     let layer = Layer::new().with_filter(LevelFilter::ERROR);
     tracing_subscriber::registry().with(layer).init();
 
-    let cnt = config.tunnel_cnt.unwrap_or(1);
+    let cnt = config.tunnel_cnt.unwrap_or(10);
     let mut tunnels = Vec::with_capacity(cnt as _);
     for _ in 0..cnt {
         tunnels.push(TcpTunnel::generate(config.server_url.clone()));

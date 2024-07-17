@@ -9,7 +9,7 @@ use tracing::{debug, error, info, trace, warn};
 
 use crate::{
     pb::CommandRequest, ClientMsg, ClientPortMap, ClientToSocks5Msg, ProstWriteStream,
-    ServiceError, Socks5ToClientMsg, VpnError, ALIVE_TIMEOUT_TIME_MS,
+    ServiceError, Socks5ToClientMsg, SocksMsg, VpnError, ALIVE_TIMEOUT_TIME_MS,
 };
 
 pub struct VpnClientProstWriteStream<S> {
@@ -120,7 +120,7 @@ where
             ClientToSocks5Msg::Data(id, data) => {
                 // debug!("process_client_to_socks5 data: {}, {:?}", id, data);
                 if let Some(tx) = port_map.get_mut(&id) {
-                    if tx.send(ClientToSocks5Msg::Data(id, data)).await.is_err() {
+                    if tx.send(SocksMsg::Data(data)).await.is_err() {
                         error!("process_client_to_socks5: Send data failed");
                         port_map.remove(&id);
                     }
@@ -132,22 +132,18 @@ where
                 debug!("process_client_to_socks5: Close port: {}", id);
                 // 由服务端发过来的，要通知 socks5 关闭这个端口
                 if let Some(tx) = port_map.get_mut(&id) {
-                    if tx.send(ClientToSocks5Msg::ClosePort(id)).await.is_err() {
+                    if tx.send(SocksMsg::ClosePort(id)).await.is_err() {
                         error!("process_client_to_socks5: Send data failed");
                     }
                 } else {
-                    error!("process_client_to_socks5: close port id not found: {}", id);
+                    warn!("process_client_to_socks5: close port id not found: {}", id);
                 }
                 port_map.remove(&id);
             }
             ClientToSocks5Msg::TcpConnectSuccess(id) => {
                 debug!("process_client_to_socks5: TcpConnectSuccess: {}", id);
                 if let Some(tx) = port_map.get_mut(&id) {
-                    if tx
-                        .send(ClientToSocks5Msg::TcpConnectSuccess(id))
-                        .await
-                        .is_err()
-                    {
+                    if tx.send(SocksMsg::TcpConnectSuccess(id)).await.is_err() {
                         error!("process_client_to_socks5: Send TcpConnectSuccess failed");
                         port_map.remove(&id);
                     }
@@ -158,11 +154,7 @@ where
             ClientToSocks5Msg::TcpConnectFailed(id) => {
                 info!("process_client_to_socks5: TcpConnectFailed: {}", id);
                 if let Some(tx) = port_map.get_mut(&id) {
-                    if tx
-                        .send(ClientToSocks5Msg::TcpConnectFailed(id))
-                        .await
-                        .is_err()
-                    {
+                    if tx.send(SocksMsg::TcpConnectFailed(id)).await.is_err() {
                         error!("process_client_to_socks5: Send TcpConnectFailed failed");
                         port_map.remove(&id);
                     }

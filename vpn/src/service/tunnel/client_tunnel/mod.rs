@@ -1,8 +1,7 @@
 mod tcp_tunnel;
 
 use crate::{
-    util::SubSenders, ClientMsg, ClientToSocks5Msg, Socks5ToClientMsg, TunnelReader, TunnelWriter,
-    VpnError,
+    util::SubSenders, ClientMsg, Socks5ToClientMsg, SocksMsg, TunnelReader, TunnelWriter, VpnError,
 };
 
 use futures::{
@@ -20,13 +19,7 @@ pub struct Tunnel {
 impl Tunnel {
     pub async fn generate(
         &mut self,
-    ) -> Result<
-        (
-            TunnelWriter<ClientMsg>,
-            TunnelReader<ClientMsg, ClientToSocks5Msg>,
-        ),
-        VpnError,
-    > {
+    ) -> Result<(TunnelWriter<ClientMsg>, TunnelReader<ClientMsg, SocksMsg>), VpnError> {
         let connect_id = self.connect_id;
         self.connect_id += 1;
 

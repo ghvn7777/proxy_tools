@@ -16,6 +16,7 @@ pub async fn proxy_tunnels(
     let mut index = 0;
 
     loop {
+        info!("In Socks server tid: {}", index);
         let socks5_config = config.clone();
         let (stream, addr) = listener.accept().await?;
         info!("Socks5 client {:?} connected", addr);

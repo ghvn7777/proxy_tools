@@ -66,7 +66,7 @@ async fn read_remote_tcp(
     loop {
         match stream.read(&mut buf).await {
             Ok(0) => {
-                error!("Tcp remote read 0");
+                info!("Tcp remote read 0");
                 break;
             }
 
@@ -103,7 +103,7 @@ async fn write_remote_tcp(
                 RemoteMsg::Data(data) => {
                     info!("Write remote tcp len: {:?}", data.len());
                     if stream.write_all(&data).await.is_err() {
-                        error!("Write remote tcp error");
+                        warn!("Write remote tcp error");
                         break;
                     }
                 }
