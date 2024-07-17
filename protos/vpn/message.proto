@@ -25,11 +25,16 @@ message Data {
   bytes data = 2;
 }
 
+enum Heartbeat {
+  PINGPONG = 0;
+}
+
 message CommandRequest {
   oneof command {
       TcpConnect tcp_connect = 2;
       Data data = 3;
       uint32 close_port = 4;
+      Heartbeat heartbeat = 5;
   }
 }
 
@@ -39,5 +44,6 @@ message CommandResponse {
       uint32 close_port = 2;
       uint32 tcp_connect_success = 3;
       uint32 tcp_connect_failed = 4;
+      Heartbeat heartbeat = 5;
   }
 }

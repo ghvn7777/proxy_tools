@@ -45,7 +45,7 @@ pub struct Data {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CommandRequest {
-    #[prost(oneof = "command_request::Command", tags = "2, 3, 4")]
+    #[prost(oneof = "command_request::Command", tags = "2, 3, 4, 5")]
     pub command: ::core::option::Option<command_request::Command>,
 }
 /// Nested message and enum types in `CommandRequest`.
@@ -59,12 +59,14 @@ pub mod command_request {
         Data(super::Data),
         #[prost(uint32, tag = "4")]
         ClosePort(u32),
+        #[prost(enumeration = "super::Heartbeat", tag = "5")]
+        Heartbeat(i32),
     }
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CommandResponse {
-    #[prost(oneof = "command_response::Response", tags = "1, 2, 3, 4")]
+    #[prost(oneof = "command_response::Response", tags = "1, 2, 3, 4, 5")]
     pub response: ::core::option::Option<command_response::Response>,
 }
 /// Nested message and enum types in `CommandResponse`.
@@ -80,5 +82,30 @@ pub mod command_response {
         TcpConnectSuccess(u32),
         #[prost(uint32, tag = "4")]
         TcpConnectFailed(u32),
+        #[prost(enumeration = "super::Heartbeat", tag = "5")]
+        Heartbeat(i32),
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum Heartbeat {
+    Pingpong = 0,
+}
+impl Heartbeat {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Heartbeat::Pingpong => "PINGPONG",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "PINGPONG" => Some(Self::Pingpong),
+            _ => None,
+        }
     }
 }

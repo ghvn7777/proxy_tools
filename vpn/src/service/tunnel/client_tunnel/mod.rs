@@ -32,6 +32,7 @@ impl Tunnel {
 
         let (tx, rx) = channel(1000);
 
+        // 这里 main sender 如果发不出去，说明代码逻辑有问题，直接 panic
         self.main_sender
             .send(Socks5ToClientMsg::InitChannel(connect_id, tx).into())
             .await

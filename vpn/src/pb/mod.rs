@@ -28,6 +28,14 @@ impl CommandRequest {
             command: Some(command_request::Command::Data(Data { id, data })),
         }
     }
+
+    pub fn new_heartbeat() -> Self {
+        Self {
+            command: Some(command_request::Command::Heartbeat(
+                Heartbeat::Pingpong as i32,
+            )),
+        }
+    }
 }
 
 impl CommandResponse {
@@ -52,6 +60,12 @@ impl CommandResponse {
     pub fn new_close_port(id: u32) -> Self {
         Self {
             response: Some(Response::ClosePort(id)),
+        }
+    }
+
+    pub fn new_heartbeat() -> Self {
+        Self {
+            response: Some(Response::Heartbeat(Heartbeat::Pingpong as i32)),
         }
     }
 }

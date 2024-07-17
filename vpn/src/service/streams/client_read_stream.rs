@@ -33,6 +33,16 @@ where
     pub async fn process(&mut self, mut sender: Sender<ClientMsg>) -> Result<(), VpnError> {
         while let Some(Ok(res)) = self.next().await {
             match res.response {
+                Some(Response::Heartbeat(_)) => {
+                    info!("Client read stream get heartbeat");
+                    if sender
+                        .send(ClientToSocks5Msg::Heartbeat.into())
+                        .await
+                        .is_err()
+                    {
+                        warn!("Send heartbeat to socks5 failed");
+                    }
+                }
                 Some(Response::Data(data)) => {
                     info!(
                         "Client read stream get data, id: {}, {:?}",

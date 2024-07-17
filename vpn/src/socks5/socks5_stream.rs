@@ -52,7 +52,7 @@ where
     }
 
     /// Execute the socks5 command that the client wants.
-    pub async fn check_command(&mut self, cmd: Socks5Command) -> Result<bool, VpnError> {
+    pub async fn check_command(&mut self, cmd: &Socks5Command) -> Result<bool, VpnError> {
         match cmd {
             Socks5Command::TCPBind => Err(Socks5Error::SocksCommandNotSupported.into()),
             Socks5Command::TCPConnect => Ok(true),

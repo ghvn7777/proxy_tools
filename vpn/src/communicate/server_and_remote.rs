@@ -9,6 +9,7 @@ pub enum ServerMsg {
 
 #[derive(Debug, Clone)]
 pub enum ServerToRemote {
+    Heartbeat,
     TcpConnect(u32, TargetAddr),
     ClosePort(u32),
     Data(u32, Vec<u8>),
@@ -24,6 +25,7 @@ pub enum RemoteToServer {
 
 pub enum RemoteMsg {
     Data(Vec<u8>),
+    ClosePort(u32),
 }
 
 impl From<ServerToRemote> for ServerMsg {

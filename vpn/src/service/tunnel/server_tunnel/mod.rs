@@ -1,4 +1,3 @@
-use futures::join;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{
@@ -6,7 +5,7 @@ use tokio::{
         TcpStream,
     },
 };
-use tracing::{error, info};
+use tracing::{debug, error, info, warn};
 
 use crate::{util::TargetAddr, RemoteMsg, RemoteToServer, ServerMsg, TunnelReader, TunnelWriter};
 
@@ -29,7 +28,7 @@ pub async fn tunnel_port_task(
 
     match stream.local_addr() {
         Ok(addr) => {
-            info!("Tcp connect success: {:?}", addr);
+            debug!("Tcp connect success: {:?}", addr);
             let _ = writer_tunnel
                 .send(RemoteToServer::TcpConnectSuccess(id).into())
                 .await;
@@ -42,35 +41,38 @@ pub async fn tunnel_port_task(
         }
     }
 
-    let (mut reader, mut writer) = stream.into_split();
-    let w = read_remote_tcp(id, &mut reader, writer_tunnel);
-    let r = write_remote_tcp(&mut writer, reader_tunnel);
-    join!(w, r);
+    let (reader, writer) = stream.into_split();
+    let r = read_remote_tcp(id, reader, writer_tunnel);
+    let w = write_remote_tcp(writer, reader_tunnel);
+
+    tokio::select! {
+        _ = r => {
+            info!("Read remote tcp task end");
+        }
+        _ = w => {
+            info!("Write remote tcp task end");
+        }
+    };
+    // join!(w, r);
+    info!("Server tunnel port task end id: {}", id);
 }
 
 async fn read_remote_tcp(
     id: u32,
-    stream: &mut OwnedReadHalf,
+    mut stream: OwnedReadHalf,
     mut writer_tunnel: TunnelWriter<ServerMsg>,
 ) {
-    let mut buf = vec![0; 1024 * 30];
+    let mut buf = vec![0; 1024 * 1000];
     loop {
         match stream.read(&mut buf).await {
             Ok(0) => {
-                // let _ = stream.shutdown(Shutdown::Read);
-                // write_port.shutdown_write().await;
-                // write_port.drop().await;
-                error!("Tcp read 0");
-                let msg = RemoteToServer::ClosePort(id).into();
-                if writer_tunnel.send(msg).await.is_err() {
-                    error!("Write tunnel error");
-                }
+                error!("Tcp remote read 0");
                 break;
             }
 
             Ok(n) => {
                 let msg = RemoteToServer::Data(id, buf[..n].to_vec()).into();
-                info!("Read remote tcp: {:?}", msg);
+                info!("Read remote tcp data len: {:?}", n);
                 if writer_tunnel.send(msg).await.is_err() {
                     error!("Write tunnel error");
                     break;
@@ -78,38 +80,49 @@ async fn read_remote_tcp(
             }
 
             Err(_) => {
-                error!("Stream read error");
-                // let _ = stream.shutdown(Shutdown::Both);
-                // write_port.close().await;
-                let msg = RemoteToServer::ClosePort(id).into();
-                if writer_tunnel.send(msg).await.is_err() {
-                    error!("Write tunnel error");
-                }
+                error!("Server Tcp Stream read error");
                 break;
             }
         }
     }
+
+    info!("Read remote tcp end");
+    let msg = RemoteToServer::ClosePort(id).into();
+    if writer_tunnel.send(msg).await.is_err() {
+        error!("Write tunnel error");
+    }
 }
 
 async fn write_remote_tcp(
-    stream: &mut OwnedWriteHalf,
+    mut stream: OwnedWriteHalf,
     mut reader_tunnel: TunnelReader<ServerMsg, RemoteMsg>,
 ) {
     loop {
         match reader_tunnel.read().await {
             Some(msg) => match msg {
                 RemoteMsg::Data(data) => {
-                    info!("Write remote tcp: {:?}", data);
+                    info!("Write remote tcp len: {:?}", data.len());
                     if stream.write_all(&data).await.is_err() {
                         error!("Write remote tcp error");
                         break;
                     }
                 }
+                RemoteMsg::ClosePort(_) => {
+                    warn!("Remote tcp close port");
+                    break;
+                }
             },
-            _ => {
-                error!("Read tunnel error");
+            None => {
+                warn!("Read tunnel error");
                 break;
             }
         }
+    }
+
+    info!("Write remote tcp end");
+    let id = reader_tunnel.get_id();
+    let msg = RemoteToServer::ClosePort(id).into();
+    if reader_tunnel.send(msg).await.is_err() {
+        error!("Write tunnel error");
     }
 }

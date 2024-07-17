@@ -75,6 +75,9 @@ pub enum ServiceError {
 
     #[error("Channel id error: {0}")]
     ChannelIdError(String),
+
+    #[error("Send tunnel msg err")]
+    SendTunnelMsgError,
 }
 
 #[derive(Error, Debug)]
