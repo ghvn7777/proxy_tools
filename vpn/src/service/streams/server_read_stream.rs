@@ -1,12 +1,12 @@
 use anyhow::Result;
 use futures::{channel::mpsc::Sender, SinkExt, StreamExt};
 use tokio::io::AsyncRead;
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
 use crate::{
     pb::{command_request::Command, CommandRequest},
     util::TargetAddr,
-    ProstReadStream, ServerMsg, VpnError,
+    ProstReadStream, ServerMsg, ServerToRemote, VpnError,
 };
 
 pub struct VpnServerProstReadStream<S> {
@@ -39,14 +39,38 @@ where
                         let target_addr: TargetAddr = target_addr.try_into().unwrap();
                         let id = tcp_connect.id;
                         info!("tcp connect: {}, {:?}", id, target_addr);
-                        let _ = sender.send(ServerMsg::TcpConnect(id, target_addr)).await;
+                        if sender
+                            .send(ServerToRemote::TcpConnect(id, target_addr).into())
+                            .await
+                            .is_err()
+                        {
+                            error!("send tcp connect to remote failed");
+                        }
                     }
                 },
                 Some(Command::ClosePort(id)) => {
-                    info!("close port id: {}", id);
-                    let _ = sender.send(ServerMsg::ClosePort(id)).await;
+                    info!("stream reader close port id: {}", id);
+                    if sender
+                        .send(ServerToRemote::ClosePort(id).into())
+                        .await
+                        .is_err()
+                    {
+                        error!("send close port to remote failed");
+                    }
                 }
-                _ => {}
+                Some(Command::Data(data)) => {
+                    info!("stream reader data: {:?}", data);
+                    if sender
+                        .send(ServerToRemote::Data(data.id, data.data).into())
+                        .await
+                        .is_err()
+                    {
+                        error!("send data to remote failed");
+                    }
+                }
+                None => {
+                    warn!("stream reader get none");
+                }
             }
         }
         Ok(())

@@ -20,16 +20,21 @@ message TcpConnect {
   uint32 id = 2;
 }
 
+message Data {
+  uint32 id = 1;
+  bytes data = 2;
+}
+
 message CommandRequest {
   oneof command {
       TcpConnect tcp_connect = 2;
-      bytes data = 3;
+      Data data = 3;
       uint32 close_port = 4;
   }
 }
 
 message CommandResponse {
   oneof response {
-      bytes data = 3;
+      Data data = 1;
   }
 }

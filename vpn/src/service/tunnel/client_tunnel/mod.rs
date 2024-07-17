@@ -1,7 +1,8 @@
 mod tcp_tunnel;
 
 use crate::{
-    util::SubSenders, ClientToSocks5Msg, Socks5ToClientMsg, TunnelReader, TunnelWriter, VpnError,
+    util::SubSenders, ClientMsg, ClientToSocks5Msg, Socks5ToClientMsg, TunnelReader, TunnelWriter,
+    VpnError,
 };
 
 use futures::{
@@ -12,8 +13,8 @@ pub use tcp_tunnel::*;
 
 pub struct Tunnel {
     connect_id: u32,
-    senders: SubSenders<Socks5ToClientMsg>,
-    main_sender: Sender<Socks5ToClientMsg>,
+    senders: SubSenders<ClientMsg>,
+    main_sender: Sender<ClientMsg>,
 }
 
 impl Tunnel {
@@ -21,8 +22,8 @@ impl Tunnel {
         &mut self,
     ) -> Result<
         (
-            TunnelWriter<Socks5ToClientMsg>,
-            TunnelReader<Socks5ToClientMsg, ClientToSocks5Msg>,
+            TunnelWriter<ClientMsg>,
+            TunnelReader<ClientMsg, ClientToSocks5Msg>,
         ),
         VpnError,
     > {
@@ -32,7 +33,7 @@ impl Tunnel {
         let (tx, rx) = channel(1000);
 
         self.main_sender
-            .send(Socks5ToClientMsg::InitChannel(connect_id, tx))
+            .send(Socks5ToClientMsg::InitChannel(connect_id, tx).into())
             .await
             .expect("Send init channel failed");
 

@@ -2,12 +2,16 @@ use std::sync::Arc;
 
 use anyhow::Result;
 
-use futures::{channel::mpsc::Sender, StreamExt};
+use futures::{channel::mpsc::Sender, SinkExt, StreamExt};
 use tokio::io::AsyncRead;
-use tracing::warn;
+use tracing::{info, warn};
 
 use crate::{
-    pb::CommandResponse, ClientPortMap, ProstReadStream, ServiceError, Socks5ToClientMsg, VpnError,
+    pb::{
+        command_response::Response::{self},
+        CommandResponse,
+    },
+    ClientMsg, ClientPortMap, ClientToSocks5Msg, ProstReadStream, ServiceError, VpnError,
 };
 
 pub struct VpnClientProstReadStream<S> {
@@ -30,15 +34,25 @@ where
 
     pub async fn process(
         &mut self,
-        _sender: Sender<Socks5ToClientMsg>,
+        mut sender: Sender<ClientMsg>,
         _channel_map: Arc<ClientPortMap>,
     ) -> Result<(), VpnError> {
         while let Some(Ok(res)) = self.next().await {
             match res.response {
-                Some(_) => {
-                    todo!()
+                Some(Response::Data(data)) => {
+                    info!(
+                        "Client read stream get data, id: {}, {:?}",
+                        data.id, data.data
+                    );
+                    if sender
+                        .send(ClientToSocks5Msg::Data(data.id, data.data).into())
+                        .await
+                        .is_err()
+                    {
+                        warn!("Send data to socks5 failed");
+                    }
                 }
-                _ => {
+                None => {
                     warn!("Got an unknown response: {:?}", res);
                     return Err(ServiceError::UnknownCommand("Unknown response".to_string()).into());
                 }

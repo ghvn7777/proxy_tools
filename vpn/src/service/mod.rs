@@ -14,5 +14,5 @@ pub use tunnel::*;
 use crate::ClientToSocks5Msg;
 
 pub type ClientPortMap = DashMap<u32, Sender<ClientToSocks5Msg>>;
-pub const ALIVE_TIMEOUT_TIME_MS: u128 = 60000;
+pub const ALIVE_TIMEOUT_TIME_MS: u64 = 60000;
 pub const HEARTBEAT_INTERVAL_MS: u64 = 5000;

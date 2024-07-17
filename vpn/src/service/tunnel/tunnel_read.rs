@@ -1,4 +1,7 @@
-use futures::channel::mpsc::{Receiver, Sender};
+use futures::{
+    channel::mpsc::{Receiver, Sender},
+    StreamExt,
+};
 
 #[allow(unused)]
 pub struct TunnelReader<T, U> {
@@ -8,9 +11,12 @@ pub struct TunnelReader<T, U> {
 }
 
 impl<T, U> TunnelReader<T, U> {
-    // pub async fn recv(&mut self) -> Option<ClientToSocks5Msg> {
-    //     self.rx.as_mut().unwrap().next().await
-    // }
+    pub async fn read(&mut self) -> Option<U> {
+        match self.rx {
+            Some(ref mut receiver) => receiver.next().await,
+            None => None,
+        }
+    }
 
     // pub async fn send(&mut self, msg: Socks5ToClientMsg) -> Result<(), VpnError> {
     //     self.tx

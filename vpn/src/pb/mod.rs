@@ -1,5 +1,6 @@
 mod vpn;
 
+use command_response::Response;
 pub use vpn::*;
 
 use crate::util::TargetAddr;
@@ -36,28 +37,10 @@ impl CommandRequest {
     //     }
 }
 
-// impl VpnCommandResponse {
-//     pub fn new_error(msg: String) -> Self {
-//         Self {
-//             status: vpn_command_response::Status::Failed as i32,
-//             message: msg,
-//             data: Vec::new(),
-//         }
-//     }
-
-//     pub fn new_success(msg: String) -> Self {
-//         Self {
-//             status: vpn_command_response::Status::Success as i32,
-//             message: msg,
-//             data: Vec::new(),
-//         }
-//     }
-
-//     pub fn new_data(data: Vec<u8>) -> Self {
-//         Self {
-//             status: vpn_command_response::Status::Success as i32,
-//             message: String::new(),
-//             data,
-//         }
-//     }
-// }
+impl CommandResponse {
+    pub fn new_data(id: u32, data: Vec<u8>) -> Self {
+        Self {
+            response: Some(Response::Data(Data { id, data })),
+        }
+    }
+}

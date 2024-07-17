@@ -6,8 +6,8 @@ use tokio::net::TcpStream;
 use tracing::{debug, warn};
 
 use crate::{
-    ClientConfig, ClientToSocks5Msg, ServiceError, Socks5ToClientMsg, TunnelReader, TunnelWriter,
-    VpnError,
+    ClientConfig, ClientMsg, ClientToSocks5Msg, ServiceError, Socks5ToClientMsg, TunnelReader,
+    TunnelWriter, VpnError,
 };
 
 pub mod command;
@@ -28,8 +28,8 @@ impl Socks5ServerStream<TcpStream> {
 
     pub async fn process(
         self,
-        mut write_port: TunnelWriter<Socks5ToClientMsg>,
-        read_port: TunnelReader<Socks5ToClientMsg, ClientToSocks5Msg>,
+        mut write_port: TunnelWriter<ClientMsg>,
+        read_port: TunnelReader<ClientMsg, ClientToSocks5Msg>,
     ) -> Result<(), VpnError> {
         let id = write_port.get_id();
         if id != read_port.get_id() {
@@ -55,7 +55,7 @@ impl Socks5ServerStream<TcpStream> {
         }
 
         write_port
-            .send(Socks5ToClientMsg::TcpConnect(id, target_addr))
+            .send(Socks5ToClientMsg::TcpConnect(id, target_addr).into())
             .await?;
         // todo: wait read_port get connect success
 
@@ -69,7 +69,7 @@ impl Socks5ServerStream<TcpStream> {
         //     stream.send_reply(1, "0.0.0.0:0".parse().unwrap()).await?;
         //     return Ok(());
         // }
-        write_port.send(Socks5ToClientMsg::ClosePort(id)).await?;
+        // write_port.send(Socks5ToClientMsg::ClosePort(id).into()).await?;
         Ok(())
     }
 }

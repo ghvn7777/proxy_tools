@@ -6,7 +6,7 @@ use tokio_stream::StreamExt;
 use tracing::{error, info};
 
 use crate::{
-    interval, util::channel_bus, ClientPortMap, ServiceError, Socks5ToClientMsg, Tunnel,
+    interval, util::channel_bus, ClientMsg, ClientPortMap, ServiceError, Tunnel,
     VpnClientStreamGenerator, VpnError, HEARTBEAT_INTERVAL_MS,
 };
 
@@ -19,7 +19,7 @@ impl TcpTunnel {
 
         tokio::spawn(async move {
             let duration = Duration::from_millis(HEARTBEAT_INTERVAL_MS);
-            let timer_stream = interval(duration, Socks5ToClientMsg::Heartbeat);
+            let timer_stream = interval(duration, ClientMsg::Heartbeat);
             let mut msg_stream = timer_stream.merge(receivers);
 
             tcp_tunnel_core_task(
@@ -39,10 +39,10 @@ impl TcpTunnel {
     }
 }
 
-async fn tcp_tunnel_core_task<S: Stream<Item = Socks5ToClientMsg> + Unpin>(
+async fn tcp_tunnel_core_task<S: Stream<Item = ClientMsg> + Unpin>(
     server_addr: String,
     msg_stream: &mut S,
-    main_sender_tx: Sender<Socks5ToClientMsg>,
+    main_sender_tx: Sender<ClientMsg>,
 ) -> Result<(), VpnError> {
     let stream = match TcpStream::connect(&server_addr).await {
         Ok(stream) => stream,
