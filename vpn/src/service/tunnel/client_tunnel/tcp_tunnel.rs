@@ -3,7 +3,7 @@ use std::time::Duration;
 use futures::{channel::mpsc::Sender, join, Stream};
 use tokio::net::TcpStream;
 use tokio_stream::StreamExt;
-use tracing::{error, info};
+use tracing::{error, info, trace};
 
 use crate::{
     interval, util::channel_bus, ClientMsg, ServiceError, Tunnel, VpnClientStreamGenerator,
@@ -21,14 +21,22 @@ impl TcpTunnel {
             let duration = Duration::from_millis(HEARTBEAT_INTERVAL_MS);
             let timer_stream = interval(duration, ClientMsg::Heartbeat);
             let mut msg_stream = timer_stream.merge(receivers);
-
-            tcp_tunnel_core_task(
-                server_addr.clone(),
-                &mut msg_stream,
-                main_sender_clone.clone(),
-            )
-            .await
-            .expect("Tcp tunnel core task error");
+            loop {
+                match tcp_tunnel_core_task(
+                    server_addr.clone(),
+                    &mut msg_stream,
+                    main_sender_clone.clone(),
+                )
+                .await
+                {
+                    Ok(_) => {
+                        info!("Tcp tunnel core task finished");
+                    }
+                    Err(e) => {
+                        error!("Tcp tunnel core task error: {:?}", e);
+                    }
+                }
+            }
         });
 
         Tunnel {
@@ -44,10 +52,12 @@ async fn tcp_tunnel_core_task<S: Stream<Item = ClientMsg> + Unpin>(
     msg_stream: &mut S,
     main_sender_tx: Sender<ClientMsg>,
 ) -> Result<(), VpnError> {
+    trace!("Tcp tunnel core task start");
     let stream = match TcpStream::connect(&server_addr).await {
         Ok(stream) => stream,
         Err(e) => {
             error!("TcpTunnel: connect to server failed: {:?}", e);
+            tokio::time::sleep(Duration::from_millis(6000)).await;
             return Err(ServiceError::TcpConnectError(server_addr).into());
         }
     };

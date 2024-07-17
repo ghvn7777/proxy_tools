@@ -6,7 +6,7 @@ use futures::stream::SelectAll;
 use futures::SinkExt;
 use tokio::io::AsyncWrite;
 use tokio_stream::StreamExt;
-use tracing::{error, info, trace};
+use tracing::{debug, error, info, trace};
 
 use crate::{
     interval, tunnel_port_task, RemoteMsg, RemoteToServer, ServerToRemote, TunnelReader,
@@ -39,7 +39,7 @@ where
         mut subsenders: SubSenders<ServerMsg>,
         receivers: Receivers<ServerMsg>,
     ) -> Result<(), VpnError> {
-        let alive_time = Instant::now();
+        let mut alive_time = Instant::now();
         let mut server_port_map = HashMap::new();
         let duration = Duration::from_millis(HEARTBEAT_INTERVAL_MS);
         let timer_stream = interval(duration, ServerMsg::Heartbeat);
@@ -60,6 +60,7 @@ where
                             }
                         }
                         ServerMsg::ServerToRemote(msg) => {
+                            alive_time = Instant::now();
                             self.process_server_to_remote(
                                 msg,
                                 &mut server_port_map,
@@ -68,6 +69,7 @@ where
                             .await;
                         }
                         ServerMsg::RemoteToServer(msg) => {
+                            alive_time = Instant::now();
                             self.process_remote_to_server(
                                 msg,
                                 &mut server_port_map,
@@ -83,6 +85,7 @@ where
                 }
             }
         }
+        info!("Server WriteStream end");
 
         Ok(())
     }
@@ -95,8 +98,19 @@ where
     ) {
         trace!("Server to remote: {:?}", msg);
         match msg {
+            ServerToRemote::Heartbeat => {
+                info!("Server heartbeat");
+                if self.send(&CommandResponse::new_heartbeat()).await.is_err() {
+                    error!("Server send heartbeat failed");
+                }
+            }
             ServerToRemote::ClosePort(id) => {
-                info!("SClose port: {}", id);
+                info!("Server Close port id: {}", id);
+                if let Some(tx) = server_port_map.get_mut(&id) {
+                    if tx.send(RemoteMsg::ClosePort(id)).await.is_err() {
+                        info!("Server send close failed");
+                    }
+                }
                 server_port_map.remove(&id);
             }
             ServerToRemote::TcpConnect(id, target_addr) => {
@@ -118,7 +132,7 @@ where
                 });
             }
             ServerToRemote::Data(id, data) => {
-                info!("Server get data: {:?}", data);
+                info!("Server get data: {:?}", data.len());
                 if let Some(tx) = server_port_map.get_mut(&id) {
                     if tx.send(RemoteMsg::Data(data)).await.is_err() {
                         info!("Server send data failed");
@@ -137,13 +151,13 @@ where
     ) {
         match msg {
             RemoteToServer::TcpConnectSuccess(id) => {
-                info!("Remote connect success: {}", id);
+                debug!("Remote connect success id: {}", id);
                 if self
                     .send(&CommandResponse::new_tcp_connect_success(id))
                     .await
                     .is_err()
                 {
-                    info!("Server send tcp connect success failed");
+                    error!("Server send tcp connect success failed");
                     server_port_map.remove(&id);
                 }
             }
@@ -154,12 +168,12 @@ where
                     .await
                     .is_err()
                 {
-                    info!("Server send tcp connect failed failed");
+                    error!("Server send tcp connect failed failed");
                     server_port_map.remove(&id);
                 }
             }
             RemoteToServer::Data(id, data) => {
-                info!("Remote get data: {:?}", data);
+                debug!("Remote get id: {}, data len: {:?}", id, data.len());
                 let msg = CommandResponse::new_data(id, data);
                 if self.send(&msg).await.is_err() {
                     error!("Server send data failed");
@@ -173,7 +187,7 @@ where
                     .await
                     .is_err()
                 {
-                    info!("Server send close port failed");
+                    error!("Server send close port failed");
                     server_port_map.remove(&id);
                 }
             }

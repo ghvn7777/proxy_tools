@@ -12,6 +12,7 @@ pub enum Socks5ToClientMsg {
 
 #[derive(Debug, Clone)]
 pub enum ClientToSocks5Msg {
+    Heartbeat,
     Data(u32, Vec<u8>),
     ClosePort(u32),
     TcpConnectSuccess(u32),

@@ -1,6 +1,6 @@
 use futures::{channel::mpsc::Sender, SinkExt};
 
-use crate::VpnError;
+use crate::{ServiceError, VpnError};
 
 #[allow(unused)]
 pub struct TunnelWriter<T> {
@@ -13,7 +13,7 @@ impl<T> TunnelWriter<T> {
         self.tx
             .send(msg)
             .await
-            .expect("Send tunnel write port failed");
+            .map_err(|_err| ServiceError::SendTunnelMsgError)?;
         Ok(())
     }
 

@@ -28,6 +28,7 @@ pub async fn proxy_tunnels(
                 .process(write_port, read_port)
                 .await
                 .expect("proxy tunnel failed");
+            info!("Socks5 client {:?} disconnected", addr);
         });
 
         index = (index + 1) % tunnels.len();

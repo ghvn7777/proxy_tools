@@ -1,7 +1,7 @@
 use anyhow::Result;
 use futures::{channel::mpsc::Sender, SinkExt, StreamExt};
 use tokio::io::AsyncRead;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 use crate::{
     pb::{command_request::Command, CommandRequest},
@@ -30,6 +30,12 @@ where
     pub async fn process(&mut self, mut sender: Sender<ServerMsg>) -> Result<(), VpnError> {
         while let Some(Ok(req)) = self.next().await {
             match req.command {
+                Some(Command::Heartbeat(_)) => {
+                    info!("server read stream get heartbeat");
+                    if sender.send(ServerToRemote::Heartbeat.into()).await.is_err() {
+                        error!("send heartbeat to remote failed");
+                    }
+                }
                 Some(Command::TcpConnect(tcp_connect)) => match tcp_connect.destination {
                     None => {
                         warn!("tcp connect destination is none");
@@ -49,7 +55,7 @@ where
                     }
                 },
                 Some(Command::ClosePort(id)) => {
-                    info!("stream reader close port id: {}", id);
+                    debug!("stream reader close port id: {}", id);
                     if sender
                         .send(ServerToRemote::ClosePort(id).into())
                         .await
@@ -59,7 +65,7 @@ where
                     }
                 }
                 Some(Command::Data(data)) => {
-                    info!("stream reader data: {:?}", data);
+                    debug!("stream reader data len: {:?}", data.data.len());
                     if sender
                         .send(ServerToRemote::Data(data.id, data.data).into())
                         .await

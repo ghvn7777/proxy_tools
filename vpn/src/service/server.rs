@@ -1,6 +1,6 @@
 use anyhow::Result;
-use futures::join;
 use tokio::net::TcpStream;
+use tracing::info;
 
 use crate::{util::channel_bus, ServerMsg, VpnServerStreamGenerator};
 
@@ -20,7 +20,17 @@ pub async fn run_tcp_server(stream: TcpStream) -> Result<()> {
         let _ = writer.process(sub_senders, receivers).await;
     };
 
-    join!(r, w);
+    // join!(r, w);
+
+    // 与客户端心跳超时也会导致服务端断开连接，客户端应该要循环重连
+    tokio::select! {
+        _ = r => {
+            info!("run_tcp_server reader end");
+        }
+        _ = w => {
+            info!("run_tcp_server writer end");
+        }
+    }
 
     Ok(())
 }

@@ -5,7 +5,7 @@ use std::{
 
 use futures::{SinkExt, Stream, StreamExt};
 use tokio::io::AsyncWrite;
-use tracing::{error, info, trace};
+use tracing::{debug, error, info, trace};
 
 use crate::{
     pb::CommandRequest, ClientMsg, ClientPortMap, ClientToSocks5Msg, ProstWriteStream,
@@ -41,7 +41,7 @@ where
                 Some(msg) => {
                     match msg {
                         ClientMsg::Heartbeat => {
-                            info!("Client WriteStream receive heartbeat");
+                            info!("Client Msg receive heartbeat");
                             if Instant::now() - alive_time
                                 > Duration::from_millis(ALIVE_TIMEOUT_TIME_MS)
                             {
@@ -49,6 +49,8 @@ where
                                 error!("Client heartbeat timeout");
                                 break;
                             }
+                            let msg = CommandRequest::new_heartbeat();
+                            self.send(&msg).await?;
                         }
                         ClientMsg::Socks5ToClient(msg) => {
                             alive_time = Instant::now();
@@ -82,10 +84,10 @@ where
                     error!("Init channel failed, channel id already exists");
                     return Err(ServiceError::ChannelIdExists(id).into());
                 }
-                info!("process_socks5_to_client: Init channel: {:?}", port_map);
+                debug!("process_socks5_to_client: Init channel: {:?}", port_map);
             }
             Socks5ToClientMsg::ClosePort(id) => {
-                info!("Close port {}: {:?}", id, port_map);
+                debug!("Close port {}: {:?}", id, port_map);
                 if port_map.remove(&id).is_none() {
                     error!("process_socks5_to_client: Port id not found: {}", id);
                 }
@@ -93,7 +95,7 @@ where
                 self.send(&msg).await?;
             }
             Socks5ToClientMsg::TcpConnect(id, addr) => {
-                info!("process_socks5_to_client: TcpConnect: {} -- {:?}", id, addr);
+                debug!("process_socks5_to_client: TcpConnect: {} -- {:?}", id, addr);
                 let msg = CommandRequest::new_tcp_connect(id, addr);
                 self.send(&msg).await?;
             }
@@ -113,8 +115,12 @@ where
     ) -> Result<(), VpnError> {
         trace!("process_client_to_socks5: {:?}", msg);
         match msg {
+            ClientToSocks5Msg::Heartbeat => {
+                // 啥也不用干，在上面更新了时间
+                info!("process client: Client WriteStream receive heartbeat");
+            }
             ClientToSocks5Msg::Data(id, data) => {
-                info!("process_client_to_socks5 data: {}, {:?}", id, data);
+                // debug!("process_client_to_socks5 data: {}, {:?}", id, data);
                 if let Some(tx) = port_map.get_mut(&id) {
                     if tx.send(ClientToSocks5Msg::Data(id, data)).await.is_err() {
                         error!("process_client_to_socks5: Send data failed");
@@ -125,13 +131,13 @@ where
                 }
             }
             ClientToSocks5Msg::ClosePort(id) => {
-                info!("process_client_to_socks5: Close port: {}", id);
+                debug!("process_client_to_socks5: Close port: {}", id);
                 if port_map.remove(&id).is_none() {
                     error!("process_client_to_socks5: Port id not found: {}", id);
                 }
             }
             ClientToSocks5Msg::TcpConnectSuccess(id) => {
-                info!("process_client_to_socks5: TcpConnectSuccess: {}", id);
+                debug!("process_client_to_socks5: TcpConnectSuccess: {}", id);
                 if let Some(tx) = port_map.get_mut(&id) {
                     if tx
                         .send(ClientToSocks5Msg::TcpConnectSuccess(id))

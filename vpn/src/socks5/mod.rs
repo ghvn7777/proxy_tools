@@ -88,7 +88,7 @@ impl Socks5ServerStream<TcpStream> {
             let r = proxy_socks_read(reader, &mut write_port);
             let w = proxy_socks_write(writer, &mut read_port);
             join!(r, w);
-            info!("Socks5 proxy finished: {}", read_port.get_id());
+            info!("Socks5 proxy finished id: {}", read_port.get_id());
         } else {
             stream.send_reply(1, "0.0.0.0:0".parse().unwrap()).await?;
             write_port
@@ -141,12 +141,15 @@ async fn proxy_socks_write(
     mut writer: OwnedWriteHalf,
     read_port: &mut TunnelReader<ClientMsg, ClientToSocks5Msg>,
 ) {
-    let id = read_port.get_id();
     loop {
         match read_port.read().await {
-            Some(ClientToSocks5Msg::Data(get_id, data)) => {
-                if id != get_id {
-                    warn!("Socks5 write get unexpected id: {}", id);
+            Some(ClientToSocks5Msg::Data(id, data)) => {
+                if id != read_port.get_id() {
+                    warn!(
+                        "Socks5 write get unexpected id: {} != {}",
+                        id,
+                        read_port.get_id()
+                    );
                     break;
                 }
 
@@ -156,8 +159,8 @@ async fn proxy_socks_write(
                     break;
                 }
             }
-            Some(ClientToSocks5Msg::ClosePort(_)) => {
-                info!("Socks5 write close port: {}", id);
+            Some(ClientToSocks5Msg::ClosePort(id)) => {
+                info!("Socks5 write close port id: {}", id);
                 break;
             }
             Some(msg) => {
