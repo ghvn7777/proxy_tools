@@ -64,7 +64,7 @@ pub mod command_request {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CommandResponse {
-    #[prost(oneof = "command_response::Response", tags = "1")]
+    #[prost(oneof = "command_response::Response", tags = "1, 2, 3, 4")]
     pub response: ::core::option::Option<command_response::Response>,
 }
 /// Nested message and enum types in `CommandResponse`.
@@ -74,5 +74,11 @@ pub mod command_response {
     pub enum Response {
         #[prost(message, tag = "1")]
         Data(super::Data),
+        #[prost(uint32, tag = "2")]
+        ClosePort(u32),
+        #[prost(uint32, tag = "3")]
+        TcpConnectSuccess(u32),
+        #[prost(uint32, tag = "4")]
+        TcpConnectFailed(u32),
     }
 }

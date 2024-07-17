@@ -61,11 +61,16 @@ async fn read_remote_tcp(
                 // write_port.shutdown_write().await;
                 // write_port.drop().await;
                 error!("Tcp read 0");
+                let msg = RemoteToServer::ClosePort(id).into();
+                if writer_tunnel.send(msg).await.is_err() {
+                    error!("Write tunnel error");
+                }
                 break;
             }
 
             Ok(n) => {
                 let msg = RemoteToServer::Data(id, buf[..n].to_vec()).into();
+                info!("Read remote tcp: {:?}", msg);
                 if writer_tunnel.send(msg).await.is_err() {
                     error!("Write tunnel error");
                     break;
@@ -76,6 +81,10 @@ async fn read_remote_tcp(
                 error!("Stream read error");
                 // let _ = stream.shutdown(Shutdown::Both);
                 // write_port.close().await;
+                let msg = RemoteToServer::ClosePort(id).into();
+                if writer_tunnel.send(msg).await.is_err() {
+                    error!("Write tunnel error");
+                }
                 break;
             }
         }
@@ -90,6 +99,7 @@ async fn write_remote_tcp(
         match reader_tunnel.read().await {
             Some(msg) => match msg {
                 RemoteMsg::Data(data) => {
+                    info!("Write remote tcp: {:?}", data);
                     if stream.write_all(&data).await.is_err() {
                         error!("Write remote tcp error");
                         break;

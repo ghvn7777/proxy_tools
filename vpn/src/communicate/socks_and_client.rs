@@ -7,11 +7,15 @@ pub enum Socks5ToClientMsg {
     InitChannel(u32, Sender<ClientToSocks5Msg>),
     TcpConnect(u32, TargetAddr),
     ClosePort(u32),
+    Data(u32, Vec<u8>),
 }
 
 #[derive(Debug, Clone)]
 pub enum ClientToSocks5Msg {
     Data(u32, Vec<u8>),
+    ClosePort(u32),
+    TcpConnectSuccess(u32),
+    TcpConnectFailed(u32),
 }
 
 #[derive(Debug, Clone)]

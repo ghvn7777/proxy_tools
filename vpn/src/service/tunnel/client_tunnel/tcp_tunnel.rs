@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
 
 use futures::{channel::mpsc::Sender, join, Stream};
 use tokio::net::TcpStream;
@@ -6,8 +6,8 @@ use tokio_stream::StreamExt;
 use tracing::{error, info};
 
 use crate::{
-    interval, util::channel_bus, ClientMsg, ClientPortMap, ServiceError, Tunnel,
-    VpnClientStreamGenerator, VpnError, HEARTBEAT_INTERVAL_MS,
+    interval, util::channel_bus, ClientMsg, ServiceError, Tunnel, VpnClientStreamGenerator,
+    VpnError, HEARTBEAT_INTERVAL_MS,
 };
 
 pub struct TcpTunnel;
@@ -52,27 +52,25 @@ async fn tcp_tunnel_core_task<S: Stream<Item = ClientMsg> + Unpin>(
         }
     };
 
-    let port_map = Arc::new(ClientPortMap::new());
     // Split client to Server stream
     let (mut read_stream, mut write_stream) = VpnClientStreamGenerator::generate(stream);
 
     let r = async {
         read_stream
-            .process(main_sender_tx, port_map.clone())
+            .process(main_sender_tx)
             .await
             .expect("tcp tunnel core task read stream error");
     };
 
     let w = async {
         write_stream
-            .process(msg_stream, port_map.clone())
+            .process(msg_stream)
             .await
             .expect("tcp tunnel core task write stream error");
     };
 
     join!(r, w);
 
-    port_map.clear();
     info!("Tcp tunnel core task finished");
 
     Ok(())

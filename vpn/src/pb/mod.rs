@@ -22,25 +22,36 @@ impl CommandRequest {
             command: Some(command_request::Command::ClosePort(id)),
         }
     }
-    //     pub fn new_get_data_stream(connect_id: String) -> Self {
-    //         Self {
-    //             connect_id,
-    //             command: Some(vpn_command_request::Command::GetDatStream(true)),
-    //         }
-    //     }
 
-    //     pub fn new_data(connect_id: String, data: Vec<u8>) -> Self {
-    //         Self {
-    //             connect_id,
-    //             command: Some(vpn_command_request::Command::Data(data)),
-    //         }
-    //     }
+    pub fn new_data(id: u32, data: Vec<u8>) -> Self {
+        Self {
+            command: Some(command_request::Command::Data(Data { id, data })),
+        }
+    }
 }
 
 impl CommandResponse {
     pub fn new_data(id: u32, data: Vec<u8>) -> Self {
         Self {
             response: Some(Response::Data(Data { id, data })),
+        }
+    }
+
+    pub fn new_tcp_connect_success(id: u32) -> Self {
+        Self {
+            response: Some(Response::TcpConnectSuccess(id)),
+        }
+    }
+
+    pub fn new_tcp_connect_failed(id: u32) -> Self {
+        Self {
+            response: Some(Response::TcpConnectFailed(id)),
+        }
+    }
+
+    pub fn new_close_port(id: u32) -> Self {
+        Self {
+            response: Some(Response::ClosePort(id)),
         }
     }
 }

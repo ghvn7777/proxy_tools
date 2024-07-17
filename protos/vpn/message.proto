@@ -36,5 +36,8 @@ message CommandRequest {
 message CommandResponse {
   oneof response {
       Data data = 1;
+      uint32 close_port = 2;
+      uint32 tcp_connect_success = 3;
+      uint32 tcp_connect_failed = 4;
   }
 }

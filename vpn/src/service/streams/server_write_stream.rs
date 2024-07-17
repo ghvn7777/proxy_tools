@@ -138,21 +138,25 @@ where
         match msg {
             RemoteToServer::TcpConnectSuccess(id) => {
                 info!("Remote connect success: {}", id);
-                // if let Some(tx) = server_port_map.get_mut(&id) {
-                //     if tx.send(RemoteMsg::TcpConnectSuccess).await.is_err() {
-                //         info!("Server send tcp connect success failed");
-                //         server_port_map.remove(&id);
-                //     }
-                // }
+                if self
+                    .send(&CommandResponse::new_tcp_connect_success(id))
+                    .await
+                    .is_err()
+                {
+                    info!("Server send tcp connect success failed");
+                    server_port_map.remove(&id);
+                }
             }
             RemoteToServer::TcpConnectFailed(id) => {
                 info!("Remote connect failed: {}", id);
-                // if let Some(tx) = server_port_map.get_mut(&id) {
-                //     if tx.send(RemoteMsg::TcpConnectFailed).await.is_err() {
-                //         info!("Server send tcp connect failed failed");
-                //         server_port_map.remove(&id);
-                //     }
-                // }
+                if self
+                    .send(&CommandResponse::new_tcp_connect_failed(id))
+                    .await
+                    .is_err()
+                {
+                    info!("Server send tcp connect failed failed");
+                    server_port_map.remove(&id);
+                }
             }
             RemoteToServer::Data(id, data) => {
                 info!("Remote get data: {:?}", data);
@@ -164,12 +168,14 @@ where
             }
             RemoteToServer::ClosePort(id) => {
                 info!("Remote close port: {}", id);
-                // if let Some(tx) = server_port_map.get_mut(&id) {
-                //     if tx.send(RemoteMsg::ClosePort).await.is_err() {
-                //         info!("Server send close port failed");
-                //         server_port_map.remove(&id);
-                //     }
-                // }
+                if self
+                    .send(&CommandResponse::new_close_port(id))
+                    .await
+                    .is_err()
+                {
+                    info!("Server send close port failed");
+                    server_port_map.remove(&id);
+                }
             }
         }
     }
