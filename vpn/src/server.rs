@@ -6,7 +6,7 @@ use vpn::server::run_tcp_server;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let layer = Layer::new().with_filter(LevelFilter::ERROR);
+    let layer = Layer::new().with_filter(LevelFilter::TRACE);
     tracing_subscriber::registry().with(layer).init();
 
     let addr = format!("0.0.0.0:{}", 9527);
