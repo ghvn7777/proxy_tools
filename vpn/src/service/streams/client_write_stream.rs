@@ -5,10 +5,9 @@ use tokio::io::AsyncWrite;
 use tracing::{error, info};
 
 use crate::{
-    pb::CommandRequest, ChannelMap, ProstWriteStream, ServiceError, Socks5ToClientMsg, VpnError,
+    pb::CommandRequest, ClientPortMap, ProstWriteStream, ServiceError, Socks5ToClientMsg, VpnError,
 };
 
-// TODO: read 和 write stream 里的 vpn 类型给反了
 pub struct VpnClientProstWriteStream<S> {
     inner: ProstWriteStream<S, CommandRequest>,
 }
@@ -30,14 +29,14 @@ where
     pub async fn process<T>(
         &mut self,
         mut msg_stream: T,
-        channel_map: Arc<ChannelMap>,
+        port_map: Arc<ClientPortMap>,
     ) -> Result<(), VpnError>
     where
         T: Stream<Item = Socks5ToClientMsg> + Unpin,
     {
         loop {
             match msg_stream.next().await {
-                Some(msg) => self.execute(msg, channel_map.clone()).await?,
+                Some(msg) => self.execute(msg, port_map.clone()).await?,
                 None => {
                     error!("Tunnel get none message, stop processing...");
                     break;
@@ -51,15 +50,21 @@ where
     pub async fn execute(
         &mut self,
         msg: Socks5ToClientMsg,
-        channel_map: Arc<ChannelMap>,
+        port_map: Arc<ClientPortMap>,
     ) -> Result<(), VpnError> {
         match msg {
             Socks5ToClientMsg::InitChannel(id, tx) => {
-                if channel_map.insert(id, tx).is_some() {
+                if port_map.insert(id, tx).is_some() {
                     error!("Init channel failed, channel id already exists");
                     return Err(ServiceError::ChannelIdExists(id).into());
                 }
-                info!("Init channel: {:?}", channel_map);
+                info!("Init channel: {:?}", port_map);
+            }
+            Socks5ToClientMsg::ClosePort(id) => {
+                port_map.remove(&id);
+                info!("Close port: {:?}", port_map);
+                let msg = CommandRequest::new_close_port(id);
+                self.send(&msg).await?;
             }
             Socks5ToClientMsg::TcpConnect(id, addr) => {
                 info!("TcpConnect: {} -- {:?}", id, addr);

@@ -7,7 +7,7 @@ use tokio::io::AsyncRead;
 use tracing::warn;
 
 use crate::{
-    pb::CommandResponse, ChannelMap, ProstReadStream, ServiceError, Socks5ToClientMsg, VpnError,
+    pb::CommandResponse, ClientPortMap, ProstReadStream, ServiceError, Socks5ToClientMsg, VpnError,
 };
 
 pub struct VpnClientProstReadStream<S> {
@@ -31,7 +31,7 @@ where
     pub async fn process(
         &mut self,
         _sender: Sender<Socks5ToClientMsg>,
-        _channel_map: Arc<ChannelMap>,
+        _channel_map: Arc<ClientPortMap>,
     ) -> Result<(), VpnError> {
         while let Some(Ok(res)) = self.next().await {
             match res.response {

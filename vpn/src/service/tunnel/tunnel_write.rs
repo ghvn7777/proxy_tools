@@ -1,15 +1,15 @@
 use futures::{channel::mpsc::Sender, SinkExt};
 
-use crate::{Socks5ToClientMsg, VpnError};
+use crate::VpnError;
 
 #[allow(unused)]
-pub struct TunnelWriter {
+pub struct TunnelWriter<T> {
     pub id: u32,
-    pub tx: Sender<Socks5ToClientMsg>,
+    pub tx: Sender<T>,
 }
 
-impl TunnelWriter {
-    pub async fn send(&mut self, msg: Socks5ToClientMsg) -> Result<(), VpnError> {
+impl<T> TunnelWriter<T> {
+    pub async fn send(&mut self, msg: T) -> Result<(), VpnError> {
         self.tx
             .send(msg)
             .await

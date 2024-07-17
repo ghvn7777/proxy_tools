@@ -6,9 +6,19 @@ use crate::util::TargetAddr;
 
 impl CommandRequest {
     pub fn new_tcp_connect(id: u32, target_addr: TargetAddr) -> Self {
-        Self {
+        let tcp_connect = TcpConnect {
+            destination: Some(target_addr.into()),
             id,
-            command: Some(command_request::Command::TcpConnect(target_addr.into())),
+        };
+
+        Self {
+            command: Some(command_request::Command::TcpConnect(tcp_connect)),
+        }
+    }
+
+    pub fn new_close_port(id: u32) -> Self {
+        Self {
+            command: Some(command_request::Command::ClosePort(id)),
         }
     }
     //     pub fn new_get_data_stream(connect_id: String) -> Self {

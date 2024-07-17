@@ -1,7 +1,9 @@
+mod server_and_remote;
 mod socks_and_client;
 
 use futures::channel::mpsc::Sender;
 
+pub use server_and_remote::*;
 pub use socks_and_client::*;
 
 pub enum TunnelPortMsg {

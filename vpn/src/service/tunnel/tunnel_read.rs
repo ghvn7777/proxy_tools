@@ -1,15 +1,13 @@
 use futures::channel::mpsc::{Receiver, Sender};
 
-use crate::{ClientToSocks5Msg, Socks5ToClientMsg};
-
 #[allow(unused)]
-pub struct TunnelReader {
+pub struct TunnelReader<T, U> {
     pub id: u32,
-    pub tx: Sender<Socks5ToClientMsg>,
-    pub rx: Option<Receiver<ClientToSocks5Msg>>,
+    pub tx: Sender<T>,
+    pub rx: Option<Receiver<U>>,
 }
 
-impl TunnelReader {
+impl<T, U> TunnelReader<T, U> {
     // pub async fn recv(&mut self) -> Option<ClientToSocks5Msg> {
     //     self.rx.as_mut().unwrap().next().await
     // }

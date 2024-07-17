@@ -1,17 +1,26 @@
 use anyhow::Result;
+use futures::join;
 use tokio::net::TcpStream;
 
-pub async fn run_tcp_server(_stream: TcpStream) -> Result<()> {
-    // let mut incoming = listener.incoming();
-    // while let Some(stream) = incoming.next().await {
-    //     let stream = stream?;
-    //     tokio::spawn(async move {
-    //         let (r, w) = stream.into_split();
-    //         let read_stream = VpnProstReadStream::new(r);
-    //         let write_stream = VpnProstWriteStream::new(w);
-    //         let mut server = VpnServer::new(read_stream, write_stream);
-    //         server.process().await.unwrap();
-    //     });
-    // }
+use crate::{util::channel_bus, ServerMsg, VpnServerStreamGenerator};
+
+pub async fn run_tcp_server(stream: TcpStream) -> Result<()> {
+    let (main_sender, sub_senders, receivers) = channel_bus::<ServerMsg>(10, 1000);
+
+    let (mut reader, mut writer) = VpnServerStreamGenerator::generate(stream);
+
+    let r = async move {
+        reader
+            .process(main_sender)
+            .await
+            .expect("run_tcp_server reader failed");
+    };
+
+    let w = async {
+        let _ = writer.process(sub_senders, receivers).await;
+    };
+
+    join!(r, w);
+
     Ok(())
 }

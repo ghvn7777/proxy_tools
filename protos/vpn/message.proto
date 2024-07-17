@@ -15,23 +15,21 @@ message DestinationAddr {
   }
 }
 
+message TcpConnect {
+  DestinationAddr destination = 1;
+  uint32 id = 2;
+}
+
 message CommandRequest {
-  uint32 id = 1;
   oneof command {
-      DestinationAddr tcp_connect = 2;
+      TcpConnect tcp_connect = 2;
       bytes data = 3;
+      uint32 close_port = 4;
   }
 }
 
 message CommandResponse {
-  enum ConnectStatus {
-    OK = 0;
-    ERROR = 1;
-  }
-
-  uint32 id = 1;
   oneof response {
-      ConnectStatus connect = 2;
       bytes data = 3;
   }
 }

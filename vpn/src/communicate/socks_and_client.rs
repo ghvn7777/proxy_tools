@@ -7,6 +7,7 @@ pub enum Socks5ToClientMsg {
     Heartbeat,
     InitChannel(u32, Sender<ClientToSocks5Msg>),
     TcpConnect(u32, TargetAddr),
+    ClosePort(u32),
 }
 
 #[derive(Debug, Clone)]

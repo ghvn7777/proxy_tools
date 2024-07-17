@@ -1,18 +1,14 @@
 mod tcp_tunnel;
-mod tunnel_read;
-mod tunnel_write;
 
-use crate::{util::SubSenders, Socks5ToClientMsg, VpnError};
+use crate::{
+    util::SubSenders, ClientToSocks5Msg, Socks5ToClientMsg, TunnelReader, TunnelWriter, VpnError,
+};
 
 use futures::{
     channel::mpsc::{channel, Sender},
     SinkExt,
 };
 pub use tcp_tunnel::*;
-pub use tunnel_read::*;
-pub use tunnel_write::*;
-
-pub const HEARTBEAT_INTERVAL_MS: u64 = 5000;
 
 pub struct Tunnel {
     connect_id: u32,
@@ -21,7 +17,15 @@ pub struct Tunnel {
 }
 
 impl Tunnel {
-    pub async fn generate(&mut self) -> Result<(TunnelWriter, TunnelReader), VpnError> {
+    pub async fn generate(
+        &mut self,
+    ) -> Result<
+        (
+            TunnelWriter<Socks5ToClientMsg>,
+            TunnelReader<Socks5ToClientMsg, ClientToSocks5Msg>,
+        ),
+        VpnError,
+    > {
         let connect_id = self.connect_id;
         self.connect_id += 1;
 
