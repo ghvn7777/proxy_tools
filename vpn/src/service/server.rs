@@ -10,14 +10,25 @@ pub async fn run_tcp_server(stream: TcpStream) -> Result<()> {
     let (mut reader, mut writer) = VpnServerStreamGenerator::generate(stream);
 
     let r = async move {
-        reader
-            .process(main_sender)
-            .await
-            .expect("run_tcp_server reader failed");
+        match reader.process(main_sender).await {
+            Ok(_) => {
+                info!("run_tcp_server reader end");
+            }
+            Err(e) => {
+                info!("run_tcp_server reader error: {:?}", e);
+            }
+        }
     };
 
     let w = async {
-        let _ = writer.process(sub_senders, receivers).await;
+        match writer.process(sub_senders, receivers).await {
+            Ok(_) => {
+                info!("run_tcp_server writer end");
+            }
+            Err(e) => {
+                info!("run_tcp_server writer error: {:?}", e);
+            }
+        }
     };
 
     // join!(r, w);

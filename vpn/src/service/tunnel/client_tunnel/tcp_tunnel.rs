@@ -66,17 +66,17 @@ async fn tcp_tunnel_core_task<S: Stream<Item = ClientMsg> + Unpin>(
     let (mut read_stream, mut write_stream) = VpnClientStreamGenerator::generate(stream);
 
     let r = async {
-        read_stream
-            .process(main_sender_tx)
-            .await
-            .expect("tcp tunnel core task read stream error");
+        match read_stream.process(main_sender_tx).await {
+            Ok(_) => info!("Tcp tunnel core task read stream finished"),
+            Err(e) => error!("Tcp tunnel core task read stream error: {:?}", e),
+        }
     };
 
     let w = async {
-        write_stream
-            .process(msg_stream)
-            .await
-            .expect("tcp tunnel core task write stream error");
+        match write_stream.process(msg_stream).await {
+            Ok(_) => info!("Tcp tunnel core task write stream finished"),
+            Err(e) => error!("Tcp tunnel core task write stream error: {:?}", e),
+        }
     };
 
     join!(r, w);

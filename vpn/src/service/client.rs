@@ -20,14 +20,16 @@ pub async fn proxy_tunnels(
         let (stream, addr) = listener.accept().await?;
         info!("Socks5 client {:?} connected", addr);
 
+        // 这里如果获取不到 tunnel 说明代码逻辑有问题，直接 panic
         let tunnel: &mut Tunnel = tunnels.get_mut(index).expect("Get tunnel failed");
         let (write_port, read_port) = tunnel.generate().await?;
         tokio::spawn(async move {
             let stream = Socks5ServerStream::new(stream, socks5_config);
-            stream
-                .process(write_port, read_port)
-                .await
-                .expect("proxy tunnel failed");
+            match stream.process(write_port, read_port).await {
+                Ok(_) => info!("Socks5 client {:?} end", addr),
+                Err(e) => info!("Socks5 client {:?} error: {:?}", addr, e),
+            };
+
             info!("Socks5 client {:?} disconnected", addr);
         });
 

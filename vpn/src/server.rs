@@ -17,7 +17,14 @@ async fn main() -> Result<()> {
         let (stream, addr) = listener.accept().await?;
         info!("Vpn server {:?} connected", addr);
         tokio::spawn(async move {
-            run_tcp_server(stream).await.expect("run tcp server error");
+            match run_tcp_server(stream).await {
+                Ok(_) => {
+                    info!("Vpn server {:?} end", addr);
+                }
+                Err(e) => {
+                    info!("Vpn server {:?} error: {:?}", addr, e);
+                }
+            }
             info!("Vpn server {:?} disconnected", addr);
         });
     }
