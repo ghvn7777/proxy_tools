@@ -120,7 +120,8 @@ async fn write_remote_tcp(
     }
 
     info!("Write remote tcp end");
-    let msg = RemoteToServer::ClosePort(0).into();
+    let id = reader_tunnel.get_id();
+    let msg = RemoteToServer::ClosePort(id).into();
     if reader_tunnel.send(msg).await.is_err() {
         error!("Write tunnel error");
     }
