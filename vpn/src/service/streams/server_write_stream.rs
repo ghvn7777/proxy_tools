@@ -174,7 +174,7 @@ where
             }
             RemoteToServer::Data(id, data) => {
                 debug!("Remote get id: {}, data len: {:?}", id, data.len());
-                let msg = CommandResponse::new_data(id, data);
+                let msg = CommandResponse::new_data(id, *data);
                 if self.send(&msg).await.is_err() {
                     error!("Server send data failed");
                     server_port_map.remove(&id);

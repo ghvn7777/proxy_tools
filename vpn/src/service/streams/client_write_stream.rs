@@ -99,7 +99,7 @@ where
             }
             Socks5ToClientMsg::Data(id, data) => {
                 info!("process_socks5_to_client data: {}, {:?}", id, data);
-                let msg = CommandRequest::new_data(id, data);
+                let msg = CommandRequest::new_data(id, *data);
                 self.send(&msg).await?;
             }
         }
