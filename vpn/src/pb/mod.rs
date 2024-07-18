@@ -45,9 +45,12 @@ impl CommandResponse {
         }
     }
 
-    pub fn new_tcp_connect_success(id: u32) -> Self {
+    pub fn new_tcp_connect_success(id: u32, bind_addr: TargetAddr) -> Self {
         Self {
-            response: Some(Response::TcpConnectSuccess(id)),
+            response: Some(Response::TcpConnectSuccess(TcpConnectSuccess {
+                id,
+                bind_addr: Some(bind_addr.into()),
+            })),
         }
     }
 

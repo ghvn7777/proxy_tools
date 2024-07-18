@@ -12,8 +12,8 @@ use tokio::{
 use tracing::{debug, error, info, warn};
 
 use crate::{
-    ClientConfig, ClientMsg, ServiceError, Socks5ToClientMsg, SocksMsg, TunnelReader, TunnelWriter,
-    VpnError,
+    util::TargetAddr, ClientConfig, ClientMsg, ServiceError, Socks5ToClientMsg, SocksMsg,
+    TunnelReader, TunnelWriter, VpnError,
 };
 
 pub mod command;
@@ -64,25 +64,50 @@ impl Socks5ServerStream<TcpStream> {
             .send(Socks5ToClientMsg::TcpConnect(id, target_addr).into())
             .await?;
 
-        let success = match read_port.read().await {
-            Some(SocksMsg::TcpConnectSuccess(id)) => {
-                info!("Read tcp connect success: {}", id);
-                true
+        let bind_addr: Option<SocketAddr> = match read_port.read().await {
+            Some(SocksMsg::TcpConnectSuccess(id, bind_addr)) => {
+                info!(
+                    "Read tcp connect success: id = {}, bind_addr = {}",
+                    id, bind_addr
+                );
+                match bind_addr {
+                    TargetAddr::Ip(addr) => Some(addr),
+                    TargetAddr::Domain(domain, port) => {
+                        error!("bind addr is domain: {}:{}", domain, port);
+                        None
+                    }
+                }
             }
             Some(msg) => {
                 warn!("Read port get unexpected msg: {:?}", msg);
-                false
+                None
             }
             None => {
                 warn!("Read port get None");
-                false
+                None
             }
         };
 
-        if success {
-            stream
-                .send_reply(0, SocketAddr::new([127, 0, 0, 1].into(), 0))
+        let success = if let Some(bind_addr) = bind_addr {
+            if stream.send_reply(0, bind_addr).await.is_err() {
+                error!("Socks5 proxy send reply error");
+                write_port
+                    .send(Socks5ToClientMsg::ClosePort(id).into())
+                    .await?;
+                false
+            } else {
+                true
+            }
+        } else {
+            let _ = stream.send_reply(1, "0.0.0.0:0".parse().unwrap()).await;
+            write_port
+                .send(Socks5ToClientMsg::ClosePort(id).into())
                 .await?;
+            false
+        };
+
+        if success {
+            debug!("socks5 connect success");
             let (reader, writer) = stream.stream.into_split();
             let r = proxy_socks_read(reader, &mut write_port);
             let w = proxy_socks_write(writer, &mut read_port);
@@ -96,14 +121,6 @@ impl Socks5ServerStream<TcpStream> {
                 }
             };
             info!("Socks5 proxy finished id: {}", read_port.get_id());
-        } else {
-            stream.send_reply(1, "0.0.0.0:0".parse().unwrap()).await?;
-            write_port
-                .send(Socks5ToClientMsg::ClosePort(id).into())
-                .await?;
-            return Err(
-                ServiceError::TcpConnectError("Read port call read() error".to_string()).into(),
-            );
         }
 
         Ok(())

@@ -140,10 +140,14 @@ where
                 }
                 port_map.remove(&id);
             }
-            ClientToSocks5Msg::TcpConnectSuccess(id) => {
+            ClientToSocks5Msg::TcpConnectSuccess(id, bind_addr) => {
                 debug!("process_client_to_socks5: TcpConnectSuccess: {}", id);
                 if let Some(tx) = port_map.get_mut(&id) {
-                    if tx.send(SocksMsg::TcpConnectSuccess(id)).await.is_err() {
+                    if tx
+                        .send(SocksMsg::TcpConnectSuccess(id, bind_addr))
+                        .await
+                        .is_err()
+                    {
                         error!("process_client_to_socks5: Send TcpConnectSuccess failed");
                         port_map.remove(&id);
                     }

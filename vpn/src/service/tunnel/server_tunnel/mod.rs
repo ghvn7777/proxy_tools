@@ -5,16 +5,20 @@ use tokio::{
         TcpStream,
     },
 };
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info, trace, warn};
 
-use crate::{util::TargetAddr, RemoteMsg, RemoteToServer, ServerMsg, TunnelReader, TunnelWriter};
+use crate::{
+    util::{TargetAddr, ToTargetAddr},
+    RemoteMsg, RemoteToServer, ServerMsg, TunnelReader, TunnelWriter,
+};
 
 pub async fn tunnel_port_task(
-    id: u32,
     target_addr: TargetAddr,
     reader_tunnel: TunnelReader<ServerMsg, RemoteMsg>,
     mut writer_tunnel: TunnelWriter<ServerMsg>,
 ) {
+    trace!("runnel_port_task: start");
+    let id = reader_tunnel.get_id();
     let target_addr_clone = target_addr.clone();
     let stream = match target_addr {
         TargetAddr::Domain(domain_addr, port) => TcpStream::connect((domain_addr, port)).await.ok(),
@@ -23,21 +27,49 @@ pub async fn tunnel_port_task(
 
     let Some(stream) = stream else {
         error!("Connect {:?} failed", target_addr_clone);
+        let _ = writer_tunnel
+            .send(RemoteToServer::TcpConnectFailed(id).into())
+            .await;
+        let _ = writer_tunnel
+            .send(RemoteToServer::ClosePort(id).into())
+            .await;
         return;
     };
 
     match stream.local_addr() {
-        Ok(addr) => {
-            debug!("Tcp connect success: {:?}", addr);
-            let _ = writer_tunnel
-                .send(RemoteToServer::TcpConnectSuccess(id).into())
-                .await;
+        Ok(bind_addr) => {
+            debug!("Tcp connect local bind addr: {:?}", bind_addr);
+            match bind_addr.to_target_addr() {
+                Ok(bind_addr) => {
+                    debug!(
+                        "Tcp connect local bind addr to target addr: {:?}",
+                        bind_addr
+                    );
+                    let _ = writer_tunnel
+                        .send(RemoteToServer::TcpConnectSuccess(id, bind_addr).into())
+                        .await;
+                }
+                Err(_) => {
+                    error!("Bind addr to target addr failed");
+                    let _ = writer_tunnel
+                        .send(RemoteToServer::TcpConnectFailed(id).into())
+                        .await;
+                    let _ = writer_tunnel
+                        .send(RemoteToServer::ClosePort(id).into())
+                        .await;
+                    return;
+                }
+            }
         }
         Err(_) => {
             error!("Get local addr failed");
             let _ = writer_tunnel
                 .send(RemoteToServer::TcpConnectFailed(id).into())
                 .await;
+            let _ = writer_tunnel
+                .send(RemoteToServer::ClosePort(id).into())
+                .await;
+            return;
         }
     }
 

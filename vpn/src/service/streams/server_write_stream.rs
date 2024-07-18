@@ -47,37 +47,23 @@ where
 
         loop {
             match msg_stream.next().await {
-                Some(msg) => {
-                    match msg {
-                        ServerMsg::Heartbeat => {
-                            info!("Server heartbeat");
-                            // info!("alive time {:?}, now {:?}", alive_time, Instant::now());
-                            if Instant::now() - alive_time
-                                > Duration::from_millis(ALIVE_TIMEOUT_TIME_MS)
-                            {
-                                error!("Server heartbeat timeout");
-                                break;
-                            }
-                        }
-                        ServerMsg::ServerToRemote(msg) => {
-                            alive_time = Instant::now();
-                            self.process_server_to_remote(
-                                msg,
-                                &mut server_port_map,
-                                &mut subsenders,
-                            )
-                            .await;
-                        }
-                        ServerMsg::RemoteToServer(msg) => {
-                            alive_time = Instant::now();
-                            self.process_remote_to_server(
-                                msg,
-                                &mut server_port_map,
-                                &mut subsenders,
-                            )
-                            .await;
-                        }
+                Some(ServerMsg::Heartbeat) => {
+                    info!("Server heartbeat");
+                    // info!("alive time {:?}, now {:?}", alive_time, Instant::now());
+                    if Instant::now() - alive_time > Duration::from_millis(ALIVE_TIMEOUT_TIME_MS) {
+                        error!("Server heartbeat timeout");
+                        break;
                     }
+                }
+                Some(ServerMsg::ServerToRemote(msg)) => {
+                    alive_time = Instant::now();
+                    self.process_server_to_remote(msg, &mut server_port_map, &mut subsenders)
+                        .await;
+                }
+                Some(ServerMsg::RemoteToServer(msg)) => {
+                    alive_time = Instant::now();
+                    self.process_remote_to_server(msg, &mut server_port_map, &mut subsenders)
+                        .await;
                 }
                 None => {
                     error!("Tunnel get none message, stop processing...");
@@ -128,7 +114,7 @@ where
                 };
 
                 tokio::spawn(async move {
-                    tunnel_port_task(id, target_addr, reader_remote, writer_remote).await;
+                    tunnel_port_task(target_addr, reader_remote, writer_remote).await;
                 });
             }
             ServerToRemote::Data(id, data) => {
@@ -150,10 +136,10 @@ where
         _subsenders: &mut SubSenders<ServerMsg>,
     ) {
         match msg {
-            RemoteToServer::TcpConnectSuccess(id) => {
+            RemoteToServer::TcpConnectSuccess(id, bind_addr) => {
                 debug!("Remote connect success id: {}", id);
                 if self
-                    .send(&CommandResponse::new_tcp_connect_success(id))
+                    .send(&CommandResponse::new_tcp_connect_success(id, bind_addr))
                     .await
                     .is_err()
                 {

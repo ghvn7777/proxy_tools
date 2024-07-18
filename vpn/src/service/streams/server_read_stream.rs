@@ -35,10 +35,11 @@ where
                     if sender.send(ServerToRemote::Heartbeat.into()).await.is_err() {
                         error!("send heartbeat to remote failed");
                     }
+                    continue;
                 }
                 Some(Command::TcpConnect(tcp_connect)) => match tcp_connect.destination {
                     None => {
-                        warn!("tcp connect destination is none");
+                        error!("tcp connect destination is none");
                         continue;
                     }
                     Some(target_addr) => {

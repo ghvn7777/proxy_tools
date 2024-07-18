@@ -65,6 +65,14 @@ pub mod command_request {
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct TcpConnectSuccess {
+    #[prost(uint32, tag = "1")]
+    pub id: u32,
+    #[prost(message, optional, tag = "2")]
+    pub bind_addr: ::core::option::Option<DestinationAddr>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CommandResponse {
     #[prost(oneof = "command_response::Response", tags = "1, 2, 3, 4, 5")]
     pub response: ::core::option::Option<command_response::Response>,
@@ -78,8 +86,8 @@ pub mod command_response {
         Data(super::Data),
         #[prost(uint32, tag = "2")]
         ClosePort(u32),
-        #[prost(uint32, tag = "3")]
-        TcpConnectSuccess(u32),
+        #[prost(message, tag = "3")]
+        TcpConnectSuccess(super::TcpConnectSuccess),
         #[prost(uint32, tag = "4")]
         TcpConnectFailed(u32),
         #[prost(enumeration = "super::Heartbeat", tag = "5")]
