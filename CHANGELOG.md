@@ -3,6 +3,31 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 ---
+## [0.4.0](https://github.com/ghvn7777/proxy_tools/compare/v0.3.2..v0.4.0) - 2024-07-18
+
+### Bug Fixes
+
+- socks return correct bind addr - ([d469649](https://github.com/ghvn7777/proxy_tools/commit/d469649f807aa40fadd4a8f997fa77de3a86242b)) - Kaka
+
+### Features
+
+- use self encode/decode algorithm - ([bd68c93](https://github.com/ghvn7777/proxy_tools/commit/bd68c93f5cd67f5dc346551ddbde1eb2857cd94b)) - Kaka
+- work on linux - ([1350ce2](https://github.com/ghvn7777/proxy_tools/commit/1350ce2b36d44fe7714965ff74b2ba974e654d37)) - Kaka
+
+### Miscellaneous Chores
+
+- change log - ([648f249](https://github.com/ghvn7777/proxy_tools/commit/648f2494c4466aaa5e9d6a734a663762d6300f0a)) - Kaka
+- fine tune param - ([169a83a](https://github.com/ghvn7777/proxy_tools/commit/169a83a6dcbc2512f79cde1af002660889b5bd04)) - Kaka
+- log level - ([5c553a8](https://github.com/ghvn7777/proxy_tools/commit/5c553a8259609eaa367425e394e55492a92f1de9)) - Kaka
+- use join!(..) instead tokio::select - ([cfd131d](https://github.com/ghvn7777/proxy_tools/commit/cfd131d61a4ec5314d75455843e6b892dde79c7e)) - Kaka
+- add log debug - ([95cefad](https://github.com/ghvn7777/proxy_tools/commit/95cefade8f71a810fae582d96f1d094ceef610ae)) - Kaka
+- remove network mod - ([6616004](https://github.com/ghvn7777/proxy_tools/commit/6616004bbeb7cdf1f064eb3690a8f3b3857b0b93)) - Kaka
+
+### Other
+
+- use box send data - ([33c287e](https://github.com/ghvn7777/proxy_tools/commit/33c287ea0b5ea218ca10e435ff73fd5df03f3fe5)) - Kaka
+
+---
 ## [0.3.2] - 2024-07-17
 
 ### Bug Fixes
