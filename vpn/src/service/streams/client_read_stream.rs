@@ -1,7 +1,8 @@
 use anyhow::Result;
 
-use futures::{channel::mpsc::Sender, SinkExt, StreamExt};
-use tokio::io::AsyncRead;
+use futures::{channel::mpsc::Sender, SinkExt};
+use prost::Message;
+use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
 use tracing::{error, info, warn};
 
 use crate::{
@@ -10,29 +11,29 @@ use crate::{
         CommandResponse, TcpConnectSuccess,
     },
     util::TargetAddr,
-    ClientMsg, ClientToSocks5Msg, ProstReadStream, ServiceError, VpnError,
+    ClientMsg, ClientToSocks5Msg, ServiceError, VpnError,
 };
 
-pub struct VpnClientProstReadStream<S> {
-    pub inner: ProstReadStream<S, CommandResponse>,
+pub struct VpnClientProstReadStream {
+    pub inner: OwnedReadHalf,
 }
 
-impl<S> VpnClientProstReadStream<S>
-where
-    S: AsyncRead + Unpin + Send,
-{
-    pub fn new(stream: S) -> Self {
-        Self {
-            inner: ProstReadStream::new(stream),
-        }
+impl VpnClientProstReadStream {
+    pub fn new(stream: OwnedReadHalf) -> Self {
+        Self { inner: stream }
     }
 
-    pub async fn next(&mut self) -> Option<Result<CommandResponse, VpnError>> {
-        self.inner.next().await
+    pub async fn next(&mut self) -> Result<CommandResponse, VpnError> {
+        let len = self.inner.read_i32().await? as usize;
+        let mut buf = vec![0; len];
+        self.inner.read_exact(&mut buf).await?;
+
+        let msg: CommandResponse = Message::decode(&buf[..])?;
+        Ok(msg)
     }
 
     pub async fn process(&mut self, mut sender: Sender<ClientMsg>) -> Result<(), VpnError> {
-        while let Some(Ok(res)) = self.next().await {
+        while let Ok(res) = self.next().await {
             match res.response {
                 Some(Response::Heartbeat(_)) => {
                     info!("Client read stream get heartbeat");
