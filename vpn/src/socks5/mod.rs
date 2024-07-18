@@ -111,7 +111,7 @@ impl Socks5ServerStream<TcpStream> {
 }
 
 async fn proxy_socks_read(mut reader: OwnedReadHalf, write_port: &mut TunnelWriter<ClientMsg>) {
-    let mut buf = vec![0u8; 1024];
+    let mut buf = vec![0u8; 1024 * 4];
     let id = write_port.get_id();
     loop {
         match reader.read(&mut buf).await {
@@ -176,6 +176,7 @@ async fn proxy_socks_write(
         }
     }
 
+    read_port.rx = None;
     if read_port
         .send(Socks5ToClientMsg::ClosePort(id).into())
         .await
