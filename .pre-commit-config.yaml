@@ -5,14 +5,16 @@ repos:
     hooks:
       - id: check-byte-order-marker
       - id: check-case-conflict
-        exclude: &exclude_pattern '^/vpn/fixtures/'
+        exclude: &exclude_pattern '^vpn/fixtures/|^docs/'
       - id: check-merge-conflict
       - id: check-symlinks
       - id: check-yaml
       - id: end-of-file-fixer
+        exclude: *exclude_pattern
       - id: mixed-line-ending
         exclude: *exclude_pattern
       - id: trailing-whitespace
+        exclude: *exclude_pattern
   - repo: https://github.com/psf/black
     rev: 22.10.0
     hooks:
