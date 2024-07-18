@@ -1,4 +1,6 @@
-# Kaka Proxy Tools
+# Proxy Tools
+
+Browser SiwthyOmega -> [Local SocksServer -> LocalClient] -> Server -> Remote
 
 ## Structure
 
