@@ -16,7 +16,7 @@ pub const LEN_LEN: usize = 4;
 /// 长度占 31 bit，所以最大的 frame 是 2G
 const MAX_FRAME: usize = 2 * 1024 * 1024 * 1024;
 /// 如果 payload 超过了 1436 字节，就做压缩
-const COMPRESSION_LIMIT: usize = 1436;
+const COMPRESSION_LIMIT: usize = 3436;
 /// 代表压缩的 bit（整个长度 4 字节的最高位）
 const COMPRESSION_BIT: usize = 1 << 31;
 

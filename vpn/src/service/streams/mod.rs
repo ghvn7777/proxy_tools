@@ -8,20 +8,12 @@ use client_write_stream::VpnClientProstWriteStream;
 use server_read_stream::VpnServerProstReadStream;
 use server_write_stream::VpnServerProstWriteStream;
 
-use tokio::net::{
-    tcp::{OwnedReadHalf, OwnedWriteHalf},
-    TcpStream,
-};
+use tokio::net::TcpStream;
 
 pub struct VpnClientStreamGenerator;
 
 impl VpnClientStreamGenerator {
-    pub fn generate(
-        stream: TcpStream,
-    ) -> (
-        VpnClientProstReadStream<OwnedReadHalf>,
-        VpnClientProstWriteStream<OwnedWriteHalf>,
-    ) {
+    pub fn generate(stream: TcpStream) -> (VpnClientProstReadStream, VpnClientProstWriteStream) {
         let (r, w) = stream.into_split();
         let read_stream = VpnClientProstReadStream::new(r);
         let write_stream = VpnClientProstWriteStream::new(w);
@@ -32,12 +24,7 @@ impl VpnClientStreamGenerator {
 pub struct VpnServerStreamGenerator;
 
 impl VpnServerStreamGenerator {
-    pub fn generate(
-        stream: TcpStream,
-    ) -> (
-        VpnServerProstReadStream<OwnedReadHalf>,
-        VpnServerProstWriteStream<OwnedWriteHalf>,
-    ) {
+    pub fn generate(stream: TcpStream) -> (VpnServerProstReadStream, VpnServerProstWriteStream) {
         let (r, w) = stream.into_split();
         let read_stream = VpnServerProstReadStream::new(r);
         let write_stream = VpnServerProstWriteStream::new(w);

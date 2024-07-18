@@ -4,7 +4,9 @@ use std::time::{Duration, Instant};
 use futures::channel::mpsc::{channel, Receiver, Sender};
 use futures::stream::SelectAll;
 use futures::SinkExt;
-use tokio::io::AsyncWrite;
+use prost::Message;
+use tokio::io::AsyncWriteExt;
+use tokio::net::tcp::OwnedWriteHalf;
 use tokio_stream::StreamExt;
 use tracing::{debug, error, info, trace};
 
@@ -12,26 +14,26 @@ use crate::{
     interval, tunnel_port_task, RemoteMsg, RemoteToServer, ServerToRemote, TunnelReader,
     TunnelWriter, ALIVE_TIMEOUT_TIME_MS, HEARTBEAT_INTERVAL_MS,
 };
-use crate::{pb::CommandResponse, util::SubSenders, ProstWriteStream, ServerMsg, VpnError};
+use crate::{pb::CommandResponse, util::SubSenders, ServerMsg, VpnError};
 
 pub type Receivers<T> = SelectAll<Receiver<T>>;
 
-pub struct VpnServerProstWriteStream<S> {
-    inner: ProstWriteStream<S, CommandResponse>,
+pub struct VpnServerProstWriteStream {
+    inner: OwnedWriteHalf,
 }
 
-impl<S> VpnServerProstWriteStream<S>
-where
-    S: AsyncWrite + Unpin + Send,
-{
-    pub fn new(stream: S) -> Self {
-        Self {
-            inner: ProstWriteStream::new(stream),
-        }
+impl VpnServerProstWriteStream {
+    pub fn new(stream: OwnedWriteHalf) -> Self {
+        Self { inner: stream }
     }
 
     pub async fn send(&mut self, msg: &CommandResponse) -> Result<(), VpnError> {
-        self.inner.send(msg).await
+        let mut buf = Vec::new();
+        msg.encode(&mut buf)?;
+        info!("send msg len: {}", buf.len());
+        self.inner.write_i32(buf.len() as i32).await?;
+        self.inner.write_all(&buf).await?;
+        Ok(())
     }
 
     pub async fn process(

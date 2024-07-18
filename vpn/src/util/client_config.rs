@@ -35,8 +35,8 @@ pub struct ClientConfig {
 
     #[arg(
         long,
-        default_value_t = true,
-        help = "Resolve DNS with local DNS server [default: true]"
+        default_value_t = false,
+        help = "Resolve DNS with local DNS server [default: false]"
     )]
     pub dns_resolve: bool,
 

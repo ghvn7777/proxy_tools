@@ -4,30 +4,31 @@ use std::{
 };
 
 use futures::{SinkExt, Stream, StreamExt};
-use tokio::io::AsyncWrite;
+use prost::Message;
+use tokio::{io::AsyncWriteExt, net::tcp::OwnedWriteHalf};
 use tracing::{debug, error, info, trace, warn};
 
 use crate::{
-    pb::CommandRequest, ClientMsg, ClientPortMap, ClientToSocks5Msg, ProstWriteStream,
-    ServiceError, Socks5ToClientMsg, SocksMsg, VpnError, ALIVE_TIMEOUT_TIME_MS,
+    pb::CommandRequest, ClientMsg, ClientPortMap, ClientToSocks5Msg, ServiceError,
+    Socks5ToClientMsg, SocksMsg, VpnError, ALIVE_TIMEOUT_TIME_MS,
 };
 
-pub struct VpnClientProstWriteStream<S> {
-    inner: ProstWriteStream<S, CommandRequest>,
+pub struct VpnClientProstWriteStream {
+    inner: OwnedWriteHalf,
 }
 
-impl<S> VpnClientProstWriteStream<S>
-where
-    S: AsyncWrite + Unpin + Send,
-{
-    pub fn new(stream: S) -> Self {
-        Self {
-            inner: ProstWriteStream::new(stream),
-        }
+impl VpnClientProstWriteStream {
+    pub fn new(stream: OwnedWriteHalf) -> Self {
+        Self { inner: stream }
     }
 
     pub async fn send(&mut self, msg: &CommandRequest) -> Result<(), VpnError> {
-        self.inner.send(msg).await
+        let mut buf = Vec::new();
+        msg.encode(&mut buf)?;
+        info!("send msg len: {}", buf.len());
+        self.inner.write_i32(buf.len() as i32).await?;
+        self.inner.write_all(&buf).await?;
+        Ok(())
     }
 
     pub async fn process<T>(&mut self, mut msg_stream: T) -> Result<(), VpnError>
@@ -111,7 +112,7 @@ where
         msg: ClientToSocks5Msg,
         port_map: &mut ClientPortMap,
     ) -> Result<(), VpnError> {
-        trace!("process_client_to_socks5: {:?}", msg);
+        // trace!("process_client_to_socks5: {:?}", msg);
         match msg {
             ClientToSocks5Msg::Heartbeat => {
                 // 啥也不用干，在上面更新了时间
