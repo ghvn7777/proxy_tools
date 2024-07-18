@@ -6,6 +6,7 @@ use std::{
     task::{Context, Poll},
 };
 use tokio::io::{AsyncRead, AsyncWrite};
+use tracing::info;
 
 use crate::{read_frame, FrameCoder, VpnError};
 
@@ -44,6 +45,7 @@ where
 
         // 拿到一个 frame 的数据，把 buffer 合并回去
         self.rbuf.unsplit(rest);
+        info!("rbuf len: {}", self.rbuf.len());
 
         // 调用 decode_frame 获取解包后的数据
         Poll::Ready(Some(In::decode_frame(&mut self.rbuf)))
