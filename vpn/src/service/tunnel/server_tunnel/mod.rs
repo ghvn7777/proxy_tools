@@ -94,7 +94,7 @@ async fn read_remote_tcp(
     mut stream: OwnedReadHalf,
     mut writer_tunnel: TunnelWriter<ServerMsg>,
 ) {
-    let mut buf = vec![0u8; 1024];
+    let mut buf = vec![0u8; 1024 * 4];
     loop {
         match stream.read(&mut buf).await {
             Ok(0) => {
