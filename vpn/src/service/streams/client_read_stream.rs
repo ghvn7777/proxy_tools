@@ -47,7 +47,8 @@ where
                 Some(Response::Data(data)) => {
                     info!(
                         "Client read stream get data, id: {}, {:?}",
-                        data.id, data.data
+                        data.id,
+                        data.data.len()
                     );
                     if sender
                         .send(ClientToSocks5Msg::Data(data.id, Box::new(data.data)).into())

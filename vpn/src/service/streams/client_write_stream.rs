@@ -111,7 +111,7 @@ where
         msg: ClientToSocks5Msg,
         port_map: &mut ClientPortMap,
     ) -> Result<(), VpnError> {
-        trace!("process_client_to_socks5: {:?}", msg);
+        // trace!("process_client_to_socks5: {:?}", msg);
         match msg {
             ClientToSocks5Msg::Heartbeat => {
                 // 啥也不用干，在上面更新了时间

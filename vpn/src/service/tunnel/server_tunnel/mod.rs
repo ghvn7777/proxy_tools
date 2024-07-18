@@ -1,3 +1,4 @@
+use futures::join;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{
@@ -77,15 +78,15 @@ pub async fn tunnel_port_task(
     let r = read_remote_tcp(id, reader, writer_tunnel);
     let w = write_remote_tcp(writer, reader_tunnel);
 
-    tokio::select! {
-        _ = r => {
-            info!("Read remote tcp task end");
-        }
-        _ = w => {
-            info!("Write remote tcp task end");
-        }
-    };
-    // join!(w, r);
+    // tokio::select! {
+    //     _ = r => {
+    //         info!("Read remote tcp task end");
+    //     }
+    //     _ = w => {
+    //         info!("Write remote tcp task end");
+    //     }
+    // };
+    join!(w, r);
     info!("Server tunnel port task end id: {}", id);
 }
 

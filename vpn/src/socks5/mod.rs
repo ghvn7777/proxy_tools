@@ -1,6 +1,7 @@
 use std::{net::SocketAddr, sync::Arc};
 
 use anyhow::Result;
+use futures::join;
 use socks5_stream::Socks5Stream;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -111,15 +112,15 @@ impl Socks5ServerStream<TcpStream> {
             let (reader, writer) = stream.stream.into_split();
             let r = proxy_socks_read(reader, &mut write_port);
             let w = proxy_socks_write(writer, &mut read_port);
-            // join!(r, w);
-            tokio::select! {
-                _ = r => {
-                    info!("Socks5 proxy read end");
-                }
-                _ = w => {
-                    info!("Socks5 proxy write end");
-                }
-            };
+            join!(r, w);
+            // tokio::select! {
+            //     _ = r => {
+            //         info!("Socks5 proxy read end");
+            //     }
+            //     _ = w => {
+            //         info!("Socks5 proxy write end");
+            //     }
+            // };
             info!("Socks5 proxy finished id: {}", read_port.get_id());
         }
 
