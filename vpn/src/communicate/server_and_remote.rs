@@ -17,7 +17,7 @@ pub enum ServerToRemote {
 
 #[derive(Debug, Clone)]
 pub enum RemoteToServer {
-    TcpConnectSuccess(u32),
+    TcpConnectSuccess(u32, TargetAddr),
     TcpConnectFailed(u32),
     Data(u32, Box<Vec<u8>>),
     ClosePort(u32),

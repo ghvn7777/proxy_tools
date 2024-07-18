@@ -15,7 +15,7 @@ pub enum ClientToSocks5Msg {
     Heartbeat,
     Data(u32, Box<Vec<u8>>),
     ClosePort(u32),
-    TcpConnectSuccess(u32),
+    TcpConnectSuccess(u32, TargetAddr),
     TcpConnectFailed(u32),
 }
 
@@ -30,7 +30,7 @@ pub enum ClientMsg {
 pub enum SocksMsg {
     Data(Box<Vec<u8>>),
     ClosePort(u32),
-    TcpConnectSuccess(u32),
+    TcpConnectSuccess(u32, TargetAddr),
     TcpConnectFailed(u32),
 }
 

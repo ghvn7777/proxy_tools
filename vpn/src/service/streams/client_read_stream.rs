@@ -2,13 +2,14 @@ use anyhow::Result;
 
 use futures::{channel::mpsc::Sender, SinkExt, StreamExt};
 use tokio::io::AsyncRead;
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
 use crate::{
     pb::{
         command_response::Response::{self},
-        CommandResponse,
+        CommandResponse, TcpConnectSuccess,
     },
+    util::TargetAddr,
     ClientMsg, ClientToSocks5Msg, ProstReadStream, ServiceError, VpnError,
 };
 
@@ -66,14 +67,25 @@ where
                         warn!("Send close port to socks5 failed");
                     }
                 }
-                Some(Response::TcpConnectSuccess(id)) => {
-                    info!("Client read stream get tcp connect success, id: {}", id);
-                    if sender
-                        .send(ClientToSocks5Msg::TcpConnectSuccess(id).into())
-                        .await
-                        .is_err()
-                    {
-                        warn!("Send tcp connect success to socks5 failed");
+                Some(Response::TcpConnectSuccess(TcpConnectSuccess { id, bind_addr })) => {
+                    info!(
+                        "Client read stream get tcp connect success: {}, {:?}",
+                        id, bind_addr
+                    );
+                    match bind_addr {
+                        Some(bind_addr) => {
+                            let bind_addr: TargetAddr = bind_addr.try_into().unwrap();
+                            if sender
+                                .send(ClientToSocks5Msg::TcpConnectSuccess(id, bind_addr).into())
+                                .await
+                                .is_err()
+                            {
+                                warn!("Send tcp connect success to socks5 failed");
+                            }
+                        }
+                        None => {
+                            error!("Tcp connect success bind addr is none");
+                        }
                     }
                 }
                 Some(Response::TcpConnectFailed(id)) => {
