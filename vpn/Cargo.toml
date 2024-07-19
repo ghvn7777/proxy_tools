@@ -21,11 +21,9 @@ dashmap = { workspace = true }
 flate2 = { workspace = true }
 futures = { workspace = true }
 prost = { workspace = true }
-rustls-native-certs = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
-tokio-rustls = { workspace = true }
 tokio-stream = { workspace = true }
 tokio-util = { workspace = true }
 tonic = { workspace = true }
@@ -33,7 +31,6 @@ tonic-build = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 uuid = { workspace = true }
-yamux = { workspace = true }
 
 futures-timer = "3.0.3"
 async-std = { version = "1.12.0", features = ["unstable"] }
