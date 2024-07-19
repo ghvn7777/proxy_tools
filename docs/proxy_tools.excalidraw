@@ -10309,11 +10309,11 @@
       "index": "bPN",
       "roundness": null,
       "seed": 352527053,
-      "version": 50,
-      "versionNonce": 757974467,
+      "version": 52,
+      "versionNonce": 1647703363,
       "isDeleted": false,
-      "boundElements": null,
-      "updated": 1721331553041,
+      "boundElements": [],
+      "updated": 1721365489364,
       "link": null,
       "locked": false,
       "text": "Server",
@@ -10791,8 +10791,8 @@
     },
     {
       "type": "text",
-      "version": 129,
-      "versionNonce": 828822979,
+      "version": 134,
+      "versionNonce": 1329865123,
       "index": "bPa",
       "isDeleted": false,
       "id": "RdN0hLRpQ8yeBWUeYk1wt",
@@ -10814,15 +10814,19 @@
       "roundness": null,
       "boundElements": [
         {
-          "id": "ed9tpHdMM_W3jN2huEZrs",
+          "id": "St2fizsCSOoORkEcCYkFz",
           "type": "arrow"
         },
         {
-          "id": "St2fizsCSOoORkEcCYkFz",
+          "id": "_Df38hYmobpbxxi5ujHgp",
+          "type": "arrow"
+        },
+        {
+          "id": "JGWzj6-mQd7QaDpvlUXcD",
           "type": "arrow"
         }
       ],
-      "updated": 1721336635740,
+      "updated": 1721365489364,
       "link": null,
       "locked": false,
       "fontSize": 36,
@@ -10937,8 +10941,8 @@
     },
     {
       "type": "text",
-      "version": 159,
-      "versionNonce": 865658019,
+      "version": 162,
+      "versionNonce": 82192685,
       "index": "bPd",
       "isDeleted": false,
       "id": "2HwkYH8Yr_TaM-0cpYOIG",
@@ -10960,19 +10964,23 @@
       "roundness": null,
       "boundElements": [
         {
-          "id": "ed9tpHdMM_W3jN2huEZrs",
-          "type": "arrow"
-        },
-        {
           "id": "lvbTbEotuY1_cq8u8eoRe",
           "type": "arrow"
         },
         {
           "id": "St2fizsCSOoORkEcCYkFz",
           "type": "arrow"
+        },
+        {
+          "id": "JGWzj6-mQd7QaDpvlUXcD",
+          "type": "arrow"
+        },
+        {
+          "id": "Lf6sbZNik1laRMOa-jsIR",
+          "type": "arrow"
         }
       ],
-      "updated": 1721333986533,
+      "updated": 1721365577687,
       "link": null,
       "locked": false,
       "fontSize": 36,
@@ -11130,8 +11138,8 @@
       "type": "arrow",
       "x": 1218.4151170678158,
       "y": -20398.36842932314,
-      "width": 427.5,
-      "height": 4.2303027931229735,
+      "width": 432.34658798089936,
+      "height": 0.6436937010912516,
       "angle": 0,
       "strokeColor": "#e03131",
       "backgroundColor": "transparent",
@@ -11145,11 +11153,11 @@
       "index": "bPi",
       "roundness": null,
       "seed": 1009956589,
-      "version": 74,
-      "versionNonce": 1252041123,
+      "version": 183,
+      "versionNonce": 1729737987,
       "isDeleted": false,
       "boundElements": null,
-      "updated": 1721336604494,
+      "updated": 1721365452502,
       "link": null,
       "locked": false,
       "points": [
@@ -11158,25 +11166,29 @@
           0
         ],
         [
-          427.5,
-          4.2303027931229735
+          432.34658798089936,
+          0.6436937010912516
         ]
       ],
       "lastCommittedPoint": null,
       "startBinding": {
         "elementId": "x2m9pyKqLDMV4bovPpk3g",
-        "focus": -0.051371364152250264,
+        "focus": -0.027522906979170366,
         "gap": 13.7099609375
       },
-      "endBinding": null,
+      "endBinding": {
+        "elementId": "RdN0hLRpQ8yeBWUeYk1wt",
+        "focus": 0.2634503825004641,
+        "gap": 14.867279206600642
+      },
       "startArrowhead": null,
       "endArrowhead": "arrow"
     },
     {
       "id": "2TosCuo_Kf41BLph7ASQR",
       "type": "text",
-      "x": 1262.1651170678158,
-      "y": -20425.38812653002,
+      "x": 1226.1948396719745,
+      "y": -20343.170349625238,
       "width": 371.17169189453125,
       "height": 23,
       "angle": 0,
@@ -11192,8 +11204,8 @@
       "index": "bPj",
       "roundness": null,
       "seed": 321642115,
-      "version": 128,
-      "versionNonce": 1401984845,
+      "version": 205,
+      "versionNonce": 252890723,
       "isDeleted": false,
       "boundElements": [
         {
@@ -11201,7 +11213,7 @@
           "type": "arrow"
         }
       ],
-      "updated": 1721336056535,
+      "updated": 1721364995033,
       "link": null,
       "locked": false,
       "text": "请求服务器，这里数据用的 grpc message",
@@ -11213,57 +11225,6 @@
       "originalText": "请求服务器，这里数据用的 grpc message",
       "autoResize": true,
       "lineHeight": 1.15
-    },
-    {
-      "id": "ed9tpHdMM_W3jN2huEZrs",
-      "type": "arrow",
-      "x": 1690.9151170678158,
-      "y": -20363.38812653002,
-      "width": 0,
-      "height": 196.75,
-      "angle": 0,
-      "strokeColor": "#e03131",
-      "backgroundColor": "transparent",
-      "fillStyle": "solid",
-      "strokeWidth": 1,
-      "strokeStyle": "solid",
-      "roughness": 1,
-      "opacity": 100,
-      "groupIds": [],
-      "frameId": null,
-      "index": "bPk",
-      "roundness": null,
-      "seed": 1412492525,
-      "version": 123,
-      "versionNonce": 1355317507,
-      "isDeleted": false,
-      "boundElements": null,
-      "updated": 1721336635741,
-      "link": null,
-      "locked": false,
-      "points": [
-        [
-          0,
-          0
-        ],
-        [
-          0,
-          196.75
-        ]
-      ],
-      "lastCommittedPoint": null,
-      "startBinding": {
-        "elementId": "RdN0hLRpQ8yeBWUeYk1wt",
-        "focus": 0.5716837874050915,
-        "gap": 8.05000000000291
-      },
-      "endBinding": {
-        "elementId": "2HwkYH8Yr_TaM-0cpYOIG",
-        "focus": -0.7080951502858197,
-        "gap": 11.80000000000291
-      },
-      "startArrowhead": null,
-      "endArrowhead": "arrow"
     },
     {
       "id": "lvbTbEotuY1_cq8u8eoRe",
@@ -11363,8 +11324,8 @@
       "type": "arrow",
       "x": 2158.415117067816,
       "y": -20386.63812653002,
-      "width": 352.5000000000002,
-      "height": 1.25,
+      "width": 379.0691245096923,
+      "height": 224.18499583981247,
       "angle": 0,
       "strokeColor": "#2f9e44",
       "backgroundColor": "transparent",
@@ -11378,11 +11339,11 @@
       "index": "bPn",
       "roundness": null,
       "seed": 1215616323,
-      "version": 76,
-      "versionNonce": 473463821,
+      "version": 334,
+      "versionNonce": 366525517,
       "isDeleted": false,
       "boundElements": null,
-      "updated": 1721332403713,
+      "updated": 1721365579661,
       "link": null,
       "locked": false,
       "points": [
@@ -11391,27 +11352,31 @@
           0
         ],
         [
-          -352.5000000000002,
-          -1.25
+          -379.0691245096923,
+          224.18499583981247
         ]
       ],
       "lastCommittedPoint": null,
       "startBinding": {
         "elementId": "Y-CefBtnmd-MK0qIlUqUy",
-        "focus": 0.4450206772702859,
+        "focus": 0.5990346466931222,
         "gap": 12.678571428570649
       },
-      "endBinding": null,
+      "endBinding": {
+        "elementId": "2HwkYH8Yr_TaM-0cpYOIG",
+        "focus": 0.08230528034334482,
+        "gap": 7.615004160190438
+      },
       "startArrowhead": null,
       "endArrowhead": "arrow"
     },
     {
       "id": "eUXWYSp7gdl9Y6RnzJGRs",
       "type": "text",
-      "x": 1918.4151170678158,
-      "y": -20424.13812653002,
-      "width": 211.15223693847656,
-      "height": 23,
+      "x": 1915.1946171272461,
+      "y": -20325.10775335753,
+      "width": 264.0721130371094,
+      "height": 46,
       "angle": 0,
       "strokeColor": "#2f9e44",
       "backgroundColor": "transparent",
@@ -11425,20 +11390,20 @@
       "index": "bPp",
       "roundness": null,
       "seed": 88568429,
-      "version": 30,
-      "versionNonce": 1411053475,
+      "version": 132,
+      "versionNonce": 389497763,
       "isDeleted": false,
       "boundElements": null,
-      "updated": 1721332420442,
+      "updated": 1721365651831,
       "link": null,
       "locked": false,
-      "text": "Reader 监听回复的数据",
+      "text": "在 Writer 模块有个新的线程，\n用来监听回复的数据",
       "fontSize": 20,
       "fontFamily": 2,
       "textAlign": "left",
       "verticalAlign": "top",
       "containerId": null,
-      "originalText": "Reader 监听回复的数据",
+      "originalText": "在 Writer 模块有个新的线程，\n用来监听回复的数据",
       "autoResize": true,
       "lineHeight": 1.15
     },
@@ -11598,11 +11563,11 @@
       "index": "bPt",
       "roundness": null,
       "seed": 90019181,
-      "version": 161,
-      "versionNonce": 37075459,
+      "version": 192,
+      "versionNonce": 732065475,
       "isDeleted": false,
       "boundElements": null,
-      "updated": 1721332626057,
+      "updated": 1721365322096,
       "link": null,
       "locked": false,
       "text": "数据内部通过 \nChannel 发给 Writer",
@@ -12108,8 +12073,8 @@
       "type": "arrow",
       "x": 1862.1651170678158,
       "y": -20964.13812653002,
-      "width": 433.28213826209344,
-      "height": 530,
+      "width": 470.1525329279998,
+      "height": 612.2177769047812,
       "angle": 0,
       "strokeColor": "#f08c00",
       "backgroundColor": "transparent",
@@ -12123,11 +12088,11 @@
       "index": "bQ5",
       "roundness": null,
       "seed": 1949773805,
-      "version": 137,
-      "versionNonce": 2078468109,
+      "version": 215,
+      "versionNonce": 890309123,
       "isDeleted": false,
       "boundElements": null,
-      "updated": 1721336056783,
+      "updated": 1721364995033,
       "link": null,
       "locked": false,
       "points": [
@@ -12136,8 +12101,8 @@
           0
         ],
         [
-          -433.28213826209344,
-          530
+          -470.1525329279998,
+          612.2177769047812
         ]
       ],
       "lastCommittedPoint": null,
@@ -12365,8 +12330,8 @@
       "type": "arrow",
       "x": 1868.4151170678158,
       "y": -19836.63812653002,
-      "width": 255,
-      "height": 380,
+      "width": 237.91246317585706,
+      "height": 364.70262528229796,
       "angle": 0,
       "strokeColor": "#9c36b5",
       "backgroundColor": "transparent",
@@ -12380,11 +12345,11 @@
       "index": "bQB",
       "roundness": null,
       "seed": 1933884451,
-      "version": 349,
-      "versionNonce": 913624877,
+      "version": 676,
+      "versionNonce": 1357952077,
       "isDeleted": false,
       "boundElements": null,
-      "updated": 1721333996551,
+      "updated": 1721365462083,
       "link": null,
       "locked": false,
       "points": [
@@ -12393,8 +12358,8 @@
           0
         ],
         [
-          -255,
-          -380
+          -237.91246317585706,
+          -364.70262528229796
         ]
       ],
       "lastCommittedPoint": null,
@@ -12480,8 +12445,8 @@
     {
       "id": "Sj8HjSismBvFC8wrXwGH5",
       "type": "text",
-      "x": 1519.6651170678158,
-      "y": -20289.13812653002,
+      "x": 1537.3778667409438,
+      "y": -20273.840751812317,
       "width": 164.46279907226562,
       "height": 69,
       "angle": 0,
@@ -12497,8 +12462,8 @@
       "index": "bQE",
       "roundness": null,
       "seed": 221658957,
-      "version": 237,
-      "versionNonce": 919363981,
+      "version": 539,
+      "versionNonce": 1297906157,
       "isDeleted": false,
       "boundElements": [
         {
@@ -12506,7 +12471,7 @@
           "type": "arrow"
         }
       ],
-      "updated": 1721333996551,
+      "updated": 1721365462083,
       "link": null,
       "locked": false,
       "text": "grpc 请求转成内部\n消息发给 writer，\n由 writer 来处理",
@@ -12573,10 +12538,10 @@
     {
       "id": "7sr5GdQtpwz4Q2sXIlXSD",
       "type": "text",
-      "x": 1767.1651170678158,
-      "y": -20292.88812653002,
-      "width": 407.4998474121094,
-      "height": 48,
+      "x": 1748.6472424095455,
+      "y": -20357.298125341396,
+      "width": 114.05695816182532,
+      "height": 159.54618765600216,
       "angle": 0,
       "strokeColor": "#2f9e44",
       "backgroundColor": "transparent",
@@ -12590,8 +12555,8 @@
       "index": "bQG",
       "roundness": null,
       "seed": 614298915,
-      "version": 155,
-      "versionNonce": 279399683,
+      "version": 356,
+      "versionNonce": 10390797,
       "isDeleted": false,
       "boundElements": [
         {
@@ -12599,17 +12564,17 @@
           "type": "arrow"
         }
       ],
-      "updated": 1721335550253,
+      "updated": 1721365648347,
       "link": null,
       "locked": false,
-      "text": "这里 Reader 把数据传回给 Writer 处理，\n这有和前面一样",
-      "fontSize": 20,
+      "text": "这里 \nReader \n把数据传回给\nWriter \n处理，\n这有和前面一\n样",
+      "fontSize": 18.993593768571685,
       "fontFamily": 3,
       "textAlign": "left",
       "verticalAlign": "top",
       "containerId": null,
       "originalText": "这里 Reader 把数据传回给 Writer 处理，\n这有和前面一样",
-      "autoResize": true,
+      "autoResize": false,
       "lineHeight": 1.2
     },
     {
@@ -12617,8 +12582,8 @@
       "type": "arrow",
       "x": 2287.165117067816,
       "y": -19837.88812653002,
-      "width": 470.442739776659,
-      "height": 392.75,
+      "width": 494.23070395840386,
+      "height": 345.61381115537733,
       "angle": 0,
       "strokeColor": "#9c36b5",
       "backgroundColor": "transparent",
@@ -12632,11 +12597,11 @@
       "index": "bQH",
       "roundness": null,
       "seed": 1098950861,
-      "version": 273,
-      "versionNonce": 559779821,
+      "version": 510,
+      "versionNonce": 247360973,
       "isDeleted": false,
       "boundElements": null,
-      "updated": 1721335548533,
+      "updated": 1721365648615,
       "link": null,
       "locked": false,
       "points": [
@@ -12645,8 +12610,8 @@
           0
         ],
         [
-          -470.442739776659,
-          -392.75
+          -494.23070395840386,
+          -345.61381115537733
         ]
       ],
       "lastCommittedPoint": null,
@@ -12742,10 +12707,10 @@
     {
       "id": "dSdiONWuoNMfczxJcnp_T",
       "type": "text",
-      "x": 759.6651170678158,
-      "y": -21262.88812653002,
-      "width": 682.656005859375,
-      "height": 120,
+      "x": 749.1984922609674,
+      "y": -21283.016251158577,
+      "width": 674.374755859375,
+      "height": 144,
       "angle": 0,
       "strokeColor": "#1971c2",
       "backgroundColor": "transparent",
@@ -12759,20 +12724,20 @@
       "index": "bQL",
       "roundness": null,
       "seed": 1809227619,
-      "version": 179,
-      "versionNonce": 281338861,
+      "version": 227,
+      "versionNonce": 1185347469,
       "isDeleted": false,
       "boundElements": null,
-      "updated": 1721337000295,
+      "updated": 1721365818844,
       "link": null,
       "locked": false,
-      "text": "注意内部数据没法用 grpc，这里就是原因\n由于 Client 的 Tunnel 数量是程序参数决定的，\n在一开始就设置好了，需要先初始化，\n后面 socks 与客户端建立连接了，需要把相应的 Channel tx 发送过来，\nSender 类型 grpc 无法表示，所以我们内部单独用了一套数据结构",
+      "text": "注意内部数据没法用 grpc，这里就是原因\n由于 Client 的 Tunnel 数量是程序参数决定的，\n在一开始就设置好了，需要先初始化，\n后面 socks 与客户端建立连接了，连接是在 SocksServer 模块建立的，\n所以需要把相应的 Channel tx 发送过来，\nSender 类型 grpc 无法表示，所以我们内部单独用了一套数据结构",
       "fontSize": 20,
       "fontFamily": 3,
       "textAlign": "left",
       "verticalAlign": "top",
       "containerId": null,
-      "originalText": "注意内部数据没法用 grpc，这里就是原因\n由于 Client 的 Tunnel 数量是程序参数决定的，\n在一开始就设置好了，需要先初始化，\n后面 socks 与客户端建立连接了，需要把相应的 Channel tx 发送过来，\nSender 类型 grpc 无法表示，所以我们内部单独用了一套数据结构",
+      "originalText": "注意内部数据没法用 grpc，这里就是原因\n由于 Client 的 Tunnel 数量是程序参数决定的，\n在一开始就设置好了，需要先初始化，\n后面 socks 与客户端建立连接了，连接是在 SocksServer 模块建立的，\n所以需要把相应的 Channel tx 发送过来，\nSender 类型 grpc 无法表示，所以我们内部单独用了一套数据结构",
       "autoResize": true,
       "lineHeight": 1.2
     },
@@ -12828,7 +12793,7 @@
       "type": "text",
       "x": 2160.915117067816,
       "y": -19460.38812653002,
-      "width": 823.2811279296875,
+      "width": 830.1561279296875,
       "height": 240,
       "angle": 0,
       "strokeColor": "#be4bdb",
@@ -12843,8 +12808,8 @@
       "index": "bQN",
       "roundness": null,
       "seed": 622668675,
-      "version": 194,
-      "versionNonce": 1593163181,
+      "version": 212,
+      "versionNonce": 868325123,
       "isDeleted": false,
       "boundElements": [
         {
@@ -12852,16 +12817,16 @@
           "type": "arrow"
         }
       ],
-      "updated": 1721336837306,
+      "updated": 1721365742978,
       "link": null,
       "locked": false,
-      "text": "这里和 SocksServer -> Client 不同，没有关于 Channel tx 的信息，\n这是因为与 Remote 的连接是收到 TcpConnect 请求后才建立的，\n所以直接在 Writer 里面新建 Channel 就可以\n\n这个 Channel 新建了个线程，Writer 模块收到 data 后通过 Channel 发到新的线程，\n新的线程真正的将数据写入到 Remote\n\nChannel 通信的数据结构为：\n\n",
+      "text": "这里和 SocksServer -> Client 不同，没有关于 Channel tx 的信息，\n这是因为与 Remote 的连接是 Server Writer 模块收到 TcpConnect 请求后才建立的，\n所以直接在 Writer 里面新建 Channel 就可以\n\n这个 Channel 新建了个线程，Writer 模块收到 data 后通过 Channel 发到新的线程，\n新的线程真正的将数据写入到 Remote\n\nChannel 通信的数据结构为：\n\n",
       "fontSize": 20,
       "fontFamily": 3,
       "textAlign": "left",
       "verticalAlign": "top",
       "containerId": null,
-      "originalText": "这里和 SocksServer -> Client 不同，没有关于 Channel tx 的信息，\n这是因为与 Remote 的连接是收到 TcpConnect 请求后才建立的，\n所以直接在 Writer 里面新建 Channel 就可以\n\n这个 Channel 新建了个线程，Writer 模块收到 data 后通过 Channel 发到新的线程，\n新的线程真正的将数据写入到 Remote\n\nChannel 通信的数据结构为：\n\n",
+      "originalText": "这里和 SocksServer -> Client 不同，没有关于 Channel tx 的信息，\n这是因为与 Remote 的连接是 Server Writer 模块收到 TcpConnect 请求后才建立的，\n所以直接在 Writer 里面新建 Channel 就可以\n\n这个 Channel 新建了个线程，Writer 模块收到 data 后通过 Channel 发到新的线程，\n新的线程真正的将数据写入到 Remote\n\nChannel 通信的数据结构为：\n\n",
       "autoResize": true,
       "lineHeight": 1.2
     },
@@ -12947,7 +12912,7 @@
     {
       "id": "cJBZL-VG499MUeTze3LxA",
       "type": "arrow",
-      "x": 2919.199972514954,
+      "x": 2922.1939141977355,
       "y": -19482.13812653002,
       "width": 1125,
       "height": 664.5,
@@ -12966,11 +12931,11 @@
         "type": 2
       },
       "seed": 1962959181,
-      "version": 423,
-      "versionNonce": 1782183533,
+      "version": 459,
+      "versionNonce": 1439953475,
       "isDeleted": false,
       "boundElements": null,
-      "updated": 1721336837308,
+      "updated": 1721365742979,
       "link": null,
       "locked": false,
       "points": [
@@ -12979,11 +12944,11 @@
           0
         ],
         [
-          266.71514455286206,
+          263.72120287008056,
           -302
         ],
         [
-          -858.2848554471379,
+          -861.2787971299194,
           -664.5
         ]
       ],
@@ -13005,8 +12970,8 @@
       "id": "JWgxmWdFgMQNq4fhdOCGa",
       "type": "text",
       "x": 1657.1651170678158,
-      "y": -20441.88812653002,
-      "width": 161.14251708984375,
+      "y": -20442.69325151516,
+      "width": 142.24603271484375,
       "height": 23,
       "angle": 0,
       "strokeColor": "#1e1e1e",
@@ -13021,20 +12986,20 @@
       "index": "bQR",
       "roundness": null,
       "seed": 219279501,
-      "version": 182,
-      "versionNonce": 184602371,
+      "version": 196,
+      "versionNonce": 1360740461,
       "isDeleted": false,
       "boundElements": null,
-      "updated": 1721336643990,
+      "updated": 1721365537422,
       "link": null,
       "locked": false,
-      "text": "监听 Remote 数据",
+      "text": "监听 Client 数据",
       "fontSize": 20,
       "fontFamily": 2,
       "textAlign": "left",
       "verticalAlign": "top",
       "containerId": null,
-      "originalText": "监听 Remote 数据",
+      "originalText": "监听 Client 数据",
       "autoResize": true,
       "lineHeight": 1.15
     },
@@ -13360,6 +13325,59 @@
         "gap": 21.25
       },
       "endBinding": null,
+      "startArrowhead": null,
+      "endArrowhead": "arrow"
+    },
+    {
+      "id": "JGWzj6-mQd7QaDpvlUXcD",
+      "type": "arrow",
+      "x": 1705.4887636853332,
+      "y": -20363.948886009744,
+      "width": 0.8051249851421289,
+      "height": 195.64537138955347,
+      "angle": 0,
+      "strokeColor": "#e03131",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 1,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "groupIds": [],
+      "frameId": null,
+      "index": "bQa",
+      "roundness": {
+        "type": 2
+      },
+      "seed": 1961093795,
+      "version": 91,
+      "versionNonce": 578916163,
+      "isDeleted": false,
+      "boundElements": null,
+      "updated": 1721365509804,
+      "link": null,
+      "locked": false,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0.8051249851421289,
+          195.64537138955347
+        ]
+      ],
+      "lastCommittedPoint": null,
+      "startBinding": {
+        "elementId": "RdN0hLRpQ8yeBWUeYk1wt",
+        "focus": 0.32631813939363935,
+        "gap": 7.489240520277235
+      },
+      "endBinding": {
+        "elementId": "2HwkYH8Yr_TaM-0cpYOIG",
+        "focus": -0.3818071244003907,
+        "gap": 13.46538809017511
+      },
       "startArrowhead": null,
       "endArrowhead": "arrow"
     }
