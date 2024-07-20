@@ -1,10 +1,17 @@
-use std::{net::SocketAddr, sync::Arc, time::Duration};
+use std::{
+    net::SocketAddr,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    time::Duration,
+};
 
 use anyhow::Result;
 use async_std::{io, net::UdpSocket};
 use futures::{
     channel::mpsc::{self, Receiver, Sender},
-    SinkExt, StreamExt,
+    join, SinkExt, StreamExt,
 };
 use socks5_stream::{new_udp_header, parse_udp_request, Socks5Stream};
 use tokio::{
@@ -226,25 +233,32 @@ impl Socks5ServerStream<TcpStream> {
             return Ok(());
         }
 
+        // 因为 udp_proxy_socks_read 里面用的 async_std 的 timeout，没有阻塞到 future 里，所以无法通过 tokio::select! 退出
+        // 我们在这里用一个 atomic bool 来控制退出
+        let running = AtomicBool::new(true);
         // since the UDP associate is established, we can know the client addr,
         // so we can send the client addr to the writer through channel when we receive the first packet
         let (client_addr_tx, client_addr_rx) = mpsc::channel(1);
-        let r = udp_proxy_socks_read(&socket, &mut write_port, client_addr_tx);
-        let w = udp_proxy_socks_write(&socket, &mut read_port, client_addr_rx);
+        let r = udp_proxy_socks_read(&running, &socket, &mut write_port, client_addr_tx);
+        let w = udp_proxy_socks_write(&running, &socket, &mut read_port, client_addr_rx);
         // 协议要求 tcp 保持连接，不然认为 udp 代理需要断开
-        let h = tcp_connection_holder(stream.stream);
-        // join!(r, w);
-        tokio::select! {
-            _ = r => {
-                info!("Socks5 udp proxy read end");
-            }
-            _ = w => {
-                info!("Socks5 udp proxy write end");
-            }
-            _ = h => {
-                info!("Socks5 udp proxy holder end");
-            }
-        };
+        let h = tcp_connection_holder(&running, stream.stream);
+        // 因为有 running 控制，所以这里一定会全部退出，可以直接用 join! 保证 close port 指令一定会发出去通知到服务器
+        // 因为这里多了个 tcp_connection_holder 任务，它没有办法发送 close port 指令，所以这里要用 join 保证。
+        // 其它时候只有两个任务，两个任务内部在退出时候会发送 close port 指令，所以不用 join
+        join!(r, w, h);
+        // tokio::select! {
+        //     _ = r => {
+        //         info!("Socks5 udp proxy read end");
+        //     }
+        //     _ = w => {
+        //         info!("Socks5 udp proxy write end");
+        //     }
+        //     _ = h => {
+
+        //         info!("Socks5 udp proxy holder end");
+        //     }
+        // };
         info!("Socks5 udp proxy finished id: {}", read_port.get_id());
 
         Ok(())
@@ -252,6 +266,7 @@ impl Socks5ServerStream<TcpStream> {
 }
 
 async fn udp_proxy_socks_read(
+    running: &AtomicBool,
     socket: &UdpSocket,
     write_port: &mut TunnelWriter<ClientMsg>,
     mut client_addr_tx: Sender<SocketAddr>,
@@ -261,6 +276,13 @@ async fn udp_proxy_socks_read(
     let mut buf = vec![0u8; 1024 * 10];
     let mut send_client_add_flag = false;
     loop {
+        if !running.load(Ordering::Relaxed) {
+            info!("Running is false Socks5 udp server read end");
+            break;
+        }
+        // 注意这里设置了超时，如果没有数据，就会返回超时错误，不会一直阻塞，因为测试时候发现一直阻塞，反而收不到数据
+        // 有超时时间会收到数据，还不清楚原因
+        // 由于这里 io 是 async_std 的，为了兼容好一点，socket 也用了 async_std 的 UdpSocket
         let res = io::timeout(Duration::from_millis(100), socket.recv_from(&mut buf)).await;
         match res {
             Ok((n, client_addr)) => {
@@ -313,8 +335,9 @@ async fn udp_proxy_socks_read(
         }
     }
 
+    running.store(false, Ordering::Relaxed);
     if write_port
-        .send(Socks5ToClientMsg::ClosePort(0).into())
+        .send(Socks5ToClientMsg::ClosePort(id).into())
         .await
         .is_err()
     {
@@ -323,6 +346,7 @@ async fn udp_proxy_socks_read(
 }
 
 async fn udp_proxy_socks_write(
+    running: &AtomicBool,
     inbound: &UdpSocket,
     read_port: &mut TunnelReader<ClientMsg, SocksMsg>,
     mut client_addr_rx: Receiver<SocketAddr>,
@@ -334,7 +358,7 @@ async fn udp_proxy_socks_write(
             error!("Client addr is none");
             read_port.rx = None;
             if read_port
-                .send(Socks5ToClientMsg::ClosePort(0).into())
+                .send(Socks5ToClientMsg::ClosePort(id).into())
                 .await
                 .is_err()
             {
@@ -355,7 +379,7 @@ async fn udp_proxy_socks_write(
     //     error!("Udp proxy socks writer connect client addr error");
     //     read_port.rx = None;
     //     if read_port
-    //         .send(Socks5ToClientMsg::ClosePort(0).into())
+    //         .send(Socks5ToClientMsg::ClosePort(id).into())
     //         .await
     //         .is_err()
     //     {
@@ -365,6 +389,11 @@ async fn udp_proxy_socks_write(
     // }
 
     loop {
+        if !running.load(Ordering::Relaxed) {
+            info!("Running is false Socks5 udp server write end");
+            break;
+        }
+
         match read_port.read().await {
             Some(SocksMsg::UdpData(target_addr, data)) => {
                 // 这里我们支持域名格式
@@ -396,9 +425,10 @@ async fn udp_proxy_socks_write(
         }
     }
 
+    running.store(false, Ordering::Relaxed);
     read_port.rx = None;
     if read_port
-        .send(Socks5ToClientMsg::ClosePort(0).into())
+        .send(Socks5ToClientMsg::ClosePort(id).into())
         .await
         .is_err()
     {
@@ -406,7 +436,7 @@ async fn udp_proxy_socks_write(
     }
 }
 
-async fn tcp_connection_holder(mut stream: TcpStream) {
+async fn tcp_connection_holder(running: &AtomicBool, mut stream: TcpStream) {
     let mut buf = vec![0u8; 1024];
     loop {
         match stream.read(&mut buf).await {
@@ -423,6 +453,9 @@ async fn tcp_connection_holder(mut stream: TcpStream) {
             }
         }
     }
+
+    running.store(false, Ordering::Relaxed);
+    info!("Socks5 tcp connection holder end, running set false");
 }
 
 async fn tcp_proxy_socks_read(mut reader: OwnedReadHalf, write_port: &mut TunnelWriter<ClientMsg>) {
