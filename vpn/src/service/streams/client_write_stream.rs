@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    sync::Arc,
     time::{Duration, Instant},
 };
 
@@ -10,21 +11,30 @@ use tracing::{debug, error, info, trace, warn};
 
 use crate::{
     pb::CommandRequest, ClientMsg, ClientPortMap, ClientToSocks5Msg, ServiceError,
-    Socks5ToClientMsg, SocksMsg, VpnError, ALIVE_TIMEOUT_TIME_MS,
+    Socks5ToClientMsg, SocksMsg, TextCrypt, VpnError, ALIVE_TIMEOUT_TIME_MS,
 };
 
 pub struct VpnClientProstWriteStream {
     inner: OwnedWriteHalf,
+    crypt: Arc<Box<dyn TextCrypt>>,
 }
 
 impl VpnClientProstWriteStream {
-    pub fn new(stream: OwnedWriteHalf) -> Self {
-        Self { inner: stream }
+    pub fn new(stream: OwnedWriteHalf, crypt: Arc<Box<dyn TextCrypt>>) -> Self {
+        Self {
+            inner: stream,
+            crypt,
+        }
     }
 
     pub async fn send(&mut self, msg: &CommandRequest) -> Result<(), VpnError> {
         let mut buf = Vec::new();
         msg.encode(&mut buf)?;
+
+        debug!("before encrypt buf len: {:?}", buf.len());
+        let buf = self.crypt.encrypt(&buf)?;
+        debug!("after encrypt buf len: {:?}", buf.len());
+
         // info!("send msg len: {}", buf.len());
         self.inner.write_i32(buf.len() as i32).await?;
         self.inner.write_all(&buf).await?;

@@ -1,13 +1,15 @@
+use std::sync::Arc;
+
 use anyhow::Result;
 use tokio::net::TcpStream;
 use tracing::info;
 
-use crate::{util::channel_bus, ServerMsg, VpnServerStreamGenerator};
+use crate::{util::channel_bus, ServerMsg, TextCrypt, VpnServerStreamGenerator};
 
-pub async fn run_tcp_server(stream: TcpStream) -> Result<()> {
+pub async fn run_tcp_server(stream: TcpStream, crypt: Arc<Box<dyn TextCrypt>>) -> Result<()> {
     let (main_sender, sub_senders, receivers) = channel_bus::<ServerMsg>(10, 1000);
 
-    let (mut reader, mut writer) = VpnServerStreamGenerator::generate(stream);
+    let (mut reader, mut writer) = VpnServerStreamGenerator::generate(stream, crypt);
 
     let r = async move {
         match reader.process(main_sender).await {

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use futures::channel::mpsc::{channel, Receiver, Sender};
@@ -12,7 +13,8 @@ use tracing::{debug, error, info, trace};
 
 use crate::{
     interval, tcp_tunnel_port_task, udp_tunnel_port_task, RemoteMsg, RemoteToServer,
-    ServerToRemote, TunnelReader, TunnelWriter, ALIVE_TIMEOUT_TIME_MS, HEARTBEAT_INTERVAL_MS,
+    ServerToRemote, TextCrypt, TunnelReader, TunnelWriter, ALIVE_TIMEOUT_TIME_MS,
+    HEARTBEAT_INTERVAL_MS,
 };
 use crate::{pb::CommandResponse, util::SubSenders, ServerMsg, VpnError};
 
@@ -20,17 +22,25 @@ pub type Receivers<T> = SelectAll<Receiver<T>>;
 
 pub struct VpnServerProstWriteStream {
     inner: OwnedWriteHalf,
+    crypt: Arc<Box<dyn TextCrypt>>,
 }
 
 impl VpnServerProstWriteStream {
-    pub fn new(stream: OwnedWriteHalf) -> Self {
-        Self { inner: stream }
+    pub fn new(stream: OwnedWriteHalf, crypt: Arc<Box<dyn TextCrypt>>) -> Self {
+        Self {
+            inner: stream,
+            crypt,
+        }
     }
 
     pub async fn send(&mut self, msg: &CommandResponse) -> Result<(), VpnError> {
         let mut buf = Vec::new();
         msg.encode(&mut buf)?;
-        // info!("send msg len: {}", buf.len());
+
+        // info!("before encrypt buf len: {:?}", buf.len());
+        let buf = self.crypt.encrypt(&buf)?;
+        // info!("after encrypt buf len: {:?}", buf.len());
+
         self.inner.write_i32(buf.len() as i32).await?;
         self.inner.write_all(&buf).await?;
         Ok(())
