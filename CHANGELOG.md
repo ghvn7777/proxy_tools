@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 ---
+## [0.5.1](https://github.com/ghvn7777/proxy_tools/compare/v0.5.0..v0.5.1) - 2024-07-20
+
+### Features
+
+- support chacha20 encryption - ([0dec96c](https://github.com/ghvn7777/proxy_tools/commit/0dec96cf80dce094d1612f298c69dff32dea3600)) - Kaka
+
+### Miscellaneous Chores
+
+- changelog - ([5d96ff8](https://github.com/ghvn7777/proxy_tools/commit/5d96ff898d2182f39c44b427e45cf195df588726)) - Kaka
+
+---
 ## [0.5.0](https://github.com/ghvn7777/proxy_tools/compare/v0.4.0..v0.5.0) - 2024-07-20
 
 ### Features
