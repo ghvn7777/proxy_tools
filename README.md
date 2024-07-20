@@ -29,7 +29,7 @@ cd target/release
 client:
 ```
 cd target/release
-./client --crypt-file ../../vpn/fixtures/chacha20.txt --server-url 127.0.0.1:9527 --tunnel-cnt 10 no-auth
+./client --crypt-file ../../vpn/fixtures/chacha20.txt --server-url 127.0.0.1:9527 --tunnel-cnt 10 --port 9020 no-auth
 ```
 
 ## Test
