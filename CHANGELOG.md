@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 ---
+## [0.5.0](https://github.com/ghvn7777/proxy_tools/compare/v0.4.0..v0.5.0) - 2024-07-20
+
+### Features
+
+- add docs - ([933df8e](https://github.com/ghvn7777/proxy_tools/commit/933df8e289ac04b2206c87653661ac6a69821172)) - Kaka
+- add udp interface but not send - ([1ef4be9](https://github.com/ghvn7777/proxy_tools/commit/1ef4be962dcedb0e74f66c5bd30253f3aa5c636e)) - Kaka
+- support udp but not test - ([9adbfce](https://github.com/ghvn7777/proxy_tools/commit/9adbfce03f14493cc3791fef7495465d55f8c7f5)) - Kaka
+- udp read port timeout close connection - ([6f87ffc](https://github.com/ghvn7777/proxy_tools/commit/6f87ffc6ce4088dc95a7c4fedc9c9d0c6c5b91be)) - Kaka
+- udp support complete - ([63be47b](https://github.com/ghvn7777/proxy_tools/commit/63be47b93e668368d1d2550d8e5a4456b5a6f8ec)) - Kaka
+
+### Miscellaneous Chores
+
+- change log - ([7a77325](https://github.com/ghvn7777/proxy_tools/commit/7a773258d5c122520597525b636bc0dd2fea96b9)) - Kaka
+- readme - ([c8ece15](https://github.com/ghvn7777/proxy_tools/commit/c8ece155287e74743dd8fd8477cf8cde3c45811b)) - Kaka
+- structure excalidraw - ([9d36ea6](https://github.com/ghvn7777/proxy_tools/commit/9d36ea6f65460c5fbcd735e4ad4f6906c36dccce)) - Kaka
+- remove extra errors - ([4cf36ca](https://github.com/ghvn7777/proxy_tools/commit/4cf36ca3d702529991265f331529a28eb591ae77)) - Kaka
+- write tunnel error log - ([9a2c2e6](https://github.com/ghvn7777/proxy_tools/commit/9a2c2e6bd4dcedfd683d8d749b58fef642a6416d)) - Kaka
+- test udp success, but not stable - ([84ed3d1](https://github.com/ghvn7777/proxy_tools/commit/84ed3d1574a7368e6da51fe1917c8a399cc2e18e)) - Kaka
+- readme - ([2ac159d](https://github.com/ghvn7777/proxy_tools/commit/2ac159d50f94bc3d26177ee5af1bce5e2d1e94f1)) - Kaka
+- update version - ([94a42b1](https://github.com/ghvn7777/proxy_tools/commit/94a42b1766846f02477b97924d51e8f377b058cb)) - Kaka
+
+---
 ## [0.4.0](https://github.com/ghvn7777/proxy_tools/compare/v0.3.2..v0.4.0) - 2024-07-18
 
 ### Bug Fixes

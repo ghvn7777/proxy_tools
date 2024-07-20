@@ -41,11 +41,3 @@ python3 test_udp_proxy.py  --proxy 127.0.0.1 --port 9020
 ## Structure
 
 ![proxy structure](./fixtures/proxy.png)
-
-sudo apt install dante-client
-
-nc -lu 192.168.31.96 1234
-nc -u 192.168.91.96 1234
-
-
-SOCKS_SERVER=127.0.0.1:9020 socksify nc -u 192.168.91.96 1234
