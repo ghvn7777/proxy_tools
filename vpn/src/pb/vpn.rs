@@ -44,8 +44,18 @@ pub struct Data {
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
+pub struct UdpData {
+    #[prost(uint32, tag = "1")]
+    pub id: u32,
+    #[prost(bytes = "vec", tag = "2")]
+    pub data: ::prost::alloc::vec::Vec<u8>,
+    #[prost(message, optional, tag = "3")]
+    pub destination: ::core::option::Option<DestinationAddr>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CommandRequest {
-    #[prost(oneof = "command_request::Command", tags = "2, 3, 4, 5")]
+    #[prost(oneof = "command_request::Command", tags = "2, 3, 4, 5, 6, 7")]
     pub command: ::core::option::Option<command_request::Command>,
 }
 /// Nested message and enum types in `CommandRequest`.
@@ -55,11 +65,15 @@ pub mod command_request {
     pub enum Command {
         #[prost(message, tag = "2")]
         TcpConnect(super::TcpConnect),
-        #[prost(message, tag = "3")]
+        #[prost(uint32, tag = "3")]
+        UdpAssociate(u32),
+        #[prost(message, tag = "4")]
         Data(super::Data),
-        #[prost(uint32, tag = "4")]
+        #[prost(message, tag = "5")]
+        UdpData(super::UdpData),
+        #[prost(uint32, tag = "6")]
         ClosePort(u32),
-        #[prost(enumeration = "super::Heartbeat", tag = "5")]
+        #[prost(enumeration = "super::Heartbeat", tag = "7")]
         Heartbeat(i32),
     }
 }
@@ -74,7 +88,7 @@ pub struct TcpConnectSuccess {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct CommandResponse {
-    #[prost(oneof = "command_response::Response", tags = "1, 2, 3, 4, 5")]
+    #[prost(oneof = "command_response::Response", tags = "1, 2, 3, 4, 5, 6, 7, 8")]
     pub response: ::core::option::Option<command_response::Response>,
 }
 /// Nested message and enum types in `CommandResponse`.
@@ -84,13 +98,19 @@ pub mod command_response {
     pub enum Response {
         #[prost(message, tag = "1")]
         Data(super::Data),
-        #[prost(uint32, tag = "2")]
+        #[prost(message, tag = "2")]
+        UdpData(super::UdpData),
+        #[prost(uint32, tag = "3")]
         ClosePort(u32),
-        #[prost(message, tag = "3")]
+        #[prost(message, tag = "4")]
         TcpConnectSuccess(super::TcpConnectSuccess),
-        #[prost(uint32, tag = "4")]
+        #[prost(uint32, tag = "5")]
         TcpConnectFailed(u32),
-        #[prost(enumeration = "super::Heartbeat", tag = "5")]
+        #[prost(uint32, tag = "6")]
+        UdpAssociateSuccess(u32),
+        #[prost(uint32, tag = "7")]
+        UdpAssociateFailed(u32),
+        #[prost(enumeration = "super::Heartbeat", tag = "8")]
         Heartbeat(i32),
     }
 }

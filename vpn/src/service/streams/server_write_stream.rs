@@ -11,8 +11,8 @@ use tokio_stream::StreamExt;
 use tracing::{debug, error, info, trace};
 
 use crate::{
-    interval, tunnel_port_task, RemoteMsg, RemoteToServer, ServerToRemote, TunnelReader,
-    TunnelWriter, ALIVE_TIMEOUT_TIME_MS, HEARTBEAT_INTERVAL_MS,
+    interval, tcp_tunnel_port_task, udp_tunnel_port_task, RemoteMsg, RemoteToServer,
+    ServerToRemote, TunnelReader, TunnelWriter, ALIVE_TIMEOUT_TIME_MS, HEARTBEAT_INTERVAL_MS,
 };
 use crate::{pb::CommandResponse, util::SubSenders, ServerMsg, VpnError};
 
@@ -30,7 +30,7 @@ impl VpnServerProstWriteStream {
     pub async fn send(&mut self, msg: &CommandResponse) -> Result<(), VpnError> {
         let mut buf = Vec::new();
         msg.encode(&mut buf)?;
-        info!("send msg len: {}", buf.len());
+        // info!("send msg len: {}", buf.len());
         self.inner.write_i32(buf.len() as i32).await?;
         self.inner.write_all(&buf).await?;
         Ok(())
@@ -50,7 +50,7 @@ impl VpnServerProstWriteStream {
         loop {
             match msg_stream.next().await {
                 Some(ServerMsg::Heartbeat) => {
-                    info!("Server heartbeat");
+                    // info!("Server heartbeat");
                     // info!("alive time {:?}, now {:?}", alive_time, Instant::now());
                     if Instant::now() - alive_time > Duration::from_millis(ALIVE_TIMEOUT_TIME_MS) {
                         error!("Server heartbeat timeout");
@@ -73,7 +73,7 @@ impl VpnServerProstWriteStream {
                 }
             }
         }
-        info!("Server WriteStream end");
+        error!("Server WriteStream end");
 
         Ok(())
     }
@@ -87,7 +87,7 @@ impl VpnServerProstWriteStream {
         trace!("Server to remote: {:?}", msg);
         match msg {
             ServerToRemote::Heartbeat => {
-                info!("Server heartbeat");
+                // info!("Server heartbeat");
                 if self.send(&CommandResponse::new_heartbeat()).await.is_err() {
                     error!("Server send heartbeat failed");
                 }
@@ -116,7 +116,27 @@ impl VpnServerProstWriteStream {
                 };
 
                 tokio::spawn(async move {
-                    tunnel_port_task(target_addr, reader_remote, writer_remote).await;
+                    tcp_tunnel_port_task(target_addr, reader_remote, writer_remote).await;
+                });
+            }
+            ServerToRemote::UdpAssociate(id) => {
+                info!("Server udp connect id: {}", id);
+                let (tx, rx) = channel(1000);
+                server_port_map.insert(id, tx);
+                let sender = subsenders.get_one_sender();
+                let read_port = TunnelReader {
+                    id,
+                    tx: sender.clone(),
+                    rx: Some(rx),
+                };
+
+                let write_port = TunnelWriter {
+                    id,
+                    tx: sender.clone(),
+                };
+
+                tokio::spawn(async move {
+                    udp_tunnel_port_task(read_port, write_port).await;
                 });
             }
             ServerToRemote::Data(id, data) => {
@@ -124,6 +144,19 @@ impl VpnServerProstWriteStream {
                 if let Some(tx) = server_port_map.get_mut(&id) {
                     if tx.send(RemoteMsg::Data(data)).await.is_err() {
                         info!("Server send data failed");
+                        server_port_map.remove(&id);
+                    }
+                }
+            }
+            ServerToRemote::UdpData(id, target_addr, data) => {
+                info!("Server get udp data: {:?}", data.len());
+                if let Some(tx) = server_port_map.get_mut(&id) {
+                    if tx
+                        .send(RemoteMsg::UdpData(target_addr, data))
+                        .await
+                        .is_err()
+                    {
+                        info!("Server send udp data failed");
                         server_port_map.remove(&id);
                     }
                 }
@@ -160,11 +193,41 @@ impl VpnServerProstWriteStream {
                     server_port_map.remove(&id);
                 }
             }
+            RemoteToServer::UdpAssociateSuccess(id) => {
+                debug!("Remote udp connect success: {}", id);
+                if self
+                    .send(&CommandResponse::new_udp_associate_success(id))
+                    .await
+                    .is_err()
+                {
+                    error!("Server send udp connect success failed");
+                    server_port_map.remove(&id);
+                }
+            }
+            RemoteToServer::UdpAssociateFailed(id) => {
+                info!("Remote udp connect failed: {}", id);
+                if self
+                    .send(&CommandResponse::new_udp_associate_failed(id))
+                    .await
+                    .is_err()
+                {
+                    error!("Server send udp connect failed failed");
+                    server_port_map.remove(&id);
+                }
+            }
             RemoteToServer::Data(id, data) => {
                 debug!("Remote get id: {}, data len: {:?}", id, data.len());
                 let msg = CommandResponse::new_data(id, *data);
                 if self.send(&msg).await.is_err() {
                     error!("Server send data failed");
+                    server_port_map.remove(&id);
+                }
+            }
+            RemoteToServer::UdpData(id, target_addr, data) => {
+                debug!("Remote get udp data: {}, {:?}", id, data.len());
+                let msg = CommandResponse::new_udp_data(id, target_addr, *data);
+                if self.send(&msg).await.is_err() {
+                    error!("Server send udp data failed");
                     server_port_map.remove(&id);
                 }
             }

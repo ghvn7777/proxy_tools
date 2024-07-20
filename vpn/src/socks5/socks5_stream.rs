@@ -8,7 +8,7 @@ use tracing::{debug, trace};
 
 use crate::{
     read_exact,
-    util::{read_address, TargetAddr},
+    util::{read_address, TargetAddr, ToTargetAddr},
     AuthInfo, AuthType, Socks5Error, VpnError,
 };
 
@@ -49,15 +49,6 @@ where
             self.authenticate(auth_info).await?;
         }
         Ok(())
-    }
-
-    /// Execute the socks5 command that the client wants.
-    pub async fn check_command(&mut self, cmd: &Socks5Command) -> Result<bool, VpnError> {
-        match cmd {
-            Socks5Command::TCPBind => Err(Socks5Error::SocksCommandNotSupported.into()),
-            Socks5Command::TCPConnect => Ok(true),
-            Socks5Command::UDPAssociate => Ok(false),
-        }
     }
 
     pub async fn read(&mut self, buf: &mut [u8]) -> Result<usize, VpnError> {
@@ -162,7 +153,7 @@ where
         // Guess address type
         let target_addr = read_address(&mut self.stream, address_type).await?;
 
-        debug!("Request target is {}", target_addr);
+        debug!("read_command() get request target is {}", target_addr);
 
         Ok((cmd, target_addr))
     }
@@ -350,4 +341,51 @@ where
             .context("Can't reply auth success")?;
         Ok(())
     }
+}
+
+/// Generate UDP header
+///
+/// # UDP Request header structure.
+/// ```text
+/// +----+------+------+----------+----------+----------+
+/// |RSV | FRAG | ATYP | DST.ADDR | DST.PORT |   DATA   |
+/// +----+------+------+----------+----------+----------+
+/// | 2  |  1   |  1   | Variable |    2     | Variable |
+/// +----+------+------+----------+----------+----------+
+///
+/// The fields in the UDP request header are:
+///
+///     o  RSV  Reserved X'0000'
+///     o  FRAG    Current fragment number
+///     o  ATYP    address type of following addresses:
+///        o  IP V4 address: X'01'
+///        o  DOMAINNAME: X'03'
+///        o  IP V6 address: X'04'
+///     o  DST.ADDR       desired destination address
+///     o  DST.PORT       desired destination port
+///     o  DATA     user data
+/// ```
+pub fn new_udp_header<T: ToTargetAddr>(target_addr: T) -> Result<Vec<u8>> {
+    let mut header = vec![
+        0, 0, // RSV
+        0, // FRAG
+    ];
+    header.append(&mut target_addr.to_target_addr()?.to_be_bytes()?);
+
+    Ok(header)
+}
+
+/// Parse data from UDP client on raw buffer, return (frag, target_addr, payload).
+pub async fn parse_udp_request(mut req: &[u8]) -> Result<(u8, TargetAddr, &[u8]), VpnError> {
+    let rsv = read_exact!(req, [0u8; 2]).context("Malformed request")?;
+
+    if !rsv.eq(&[0u8; 2]) {
+        return Err(Socks5Error::GeneralFailure.into());
+    }
+
+    let [frag, atyp] = read_exact!(req, [0u8; 2]).context("Malformed request")?;
+
+    let target_addr = read_address(&mut req, atyp).await?;
+
+    Ok((frag, target_addr, req))
 }

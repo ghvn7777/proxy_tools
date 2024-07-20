@@ -25,7 +25,7 @@ impl VpnClientProstWriteStream {
     pub async fn send(&mut self, msg: &CommandRequest) -> Result<(), VpnError> {
         let mut buf = Vec::new();
         msg.encode(&mut buf)?;
-        info!("send msg len: {}", buf.len());
+        // info!("send msg len: {}", buf.len());
         self.inner.write_i32(buf.len() as i32).await?;
         self.inner.write_all(&buf).await?;
         Ok(())
@@ -41,7 +41,7 @@ impl VpnClientProstWriteStream {
             match msg_stream.next().await {
                 Some(msg) => match msg {
                     ClientMsg::Heartbeat => {
-                        info!("Client Msg receive heartbeat");
+                        // info!("Client Msg receive heartbeat");
                         if Instant::now() - alive_time
                             > Duration::from_millis(ALIVE_TIMEOUT_TIME_MS)
                         {
@@ -75,7 +75,7 @@ impl VpnClientProstWriteStream {
         msg: Socks5ToClientMsg,
         port_map: &mut ClientPortMap,
     ) -> Result<(), VpnError> {
-        trace!("process_socks5_to_client: {:?}", msg);
+        trace!("process_socks5_to_client msg: {:?}", msg);
         match msg {
             Socks5ToClientMsg::InitChannel(id, tx) => {
                 if port_map.insert(id, tx).is_some() {
@@ -98,9 +98,22 @@ impl VpnClientProstWriteStream {
                 let msg = CommandRequest::new_tcp_connect(id, addr);
                 self.send(&msg).await?;
             }
+            Socks5ToClientMsg::UdpAssociate(id) => {
+                debug!("process_socks5_to_client: UdpAssociate: {}", id);
+                let msg = CommandRequest::new_associate_connect(id);
+                self.send(&msg).await?;
+            }
             Socks5ToClientMsg::Data(id, data) => {
                 info!("process_socks5_to_client data: {}, {:?}", id, data);
                 let msg = CommandRequest::new_data(id, *data);
+                self.send(&msg).await?;
+            }
+            Socks5ToClientMsg::UdpData(id, target_addr, data) => {
+                // info!(
+                //     "process_socks5_to_client udp data: {}, {:?}, {:?}",
+                //     id, target_addr, data
+                // );
+                let msg = CommandRequest::new_udp_data(id, target_addr, *data);
                 self.send(&msg).await?;
             }
         }
@@ -116,13 +129,28 @@ impl VpnClientProstWriteStream {
         match msg {
             ClientToSocks5Msg::Heartbeat => {
                 // 啥也不用干，在上面更新了时间
-                info!("process client: Client WriteStream receive heartbeat");
+                // info!("process client: Client WriteStream receive heartbeat");
             }
             ClientToSocks5Msg::Data(id, data) => {
                 // debug!("process_client_to_socks5 data: {}, {:?}", id, data);
                 if let Some(tx) = port_map.get_mut(&id) {
                     if tx.send(SocksMsg::Data(data)).await.is_err() {
                         error!("process_client_to_socks5: Send data failed");
+                        port_map.remove(&id);
+                    }
+                } else {
+                    warn!("process_client_to_socks5: Port id not found: {}", id);
+                }
+            }
+            ClientToSocks5Msg::UdpData(id, target_addr, data) => {
+                debug!(
+                    "process_client_to_socks5 udp data: {}, {:?}",
+                    id,
+                    data.len()
+                );
+                if let Some(tx) = port_map.get_mut(&id) {
+                    if tx.send(SocksMsg::UdpData(target_addr, data)).await.is_err() {
+                        error!("process_client_to_socks5: Send udp data failed");
                         port_map.remove(&id);
                     }
                 } else {
@@ -161,6 +189,28 @@ impl VpnClientProstWriteStream {
                 if let Some(tx) = port_map.get_mut(&id) {
                     if tx.send(SocksMsg::TcpConnectFailed(id)).await.is_err() {
                         error!("process_client_to_socks5: Send TcpConnectFailed failed");
+                        port_map.remove(&id);
+                    }
+                } else {
+                    warn!("process_client_to_socks5: Port id not found: {}", id);
+                }
+            }
+            ClientToSocks5Msg::UdpAssociateSuccess(id) => {
+                debug!("process_client_to_socks5: UdpAssociateSuccess: {}", id);
+                if let Some(tx) = port_map.get_mut(&id) {
+                    if tx.send(SocksMsg::UdpAssociateSuccess(id)).await.is_err() {
+                        error!("process_client_to_socks5: Send UdpAssociateSuccess msg failed");
+                        port_map.remove(&id);
+                    }
+                } else {
+                    warn!("process_client_to_socks5: Port id not found: {}", id);
+                }
+            }
+            ClientToSocks5Msg::UdpAssociateFailed(id) => {
+                info!("process_client_to_socks5: UdpAssociateFailed: {}", id);
+                if let Some(tx) = port_map.get_mut(&id) {
+                    if tx.send(SocksMsg::UdpAssociateFailed(id)).await.is_err() {
+                        error!("process_client_to_socks5: Send UdpAssociateFailed msg failed");
                         port_map.remove(&id);
                     }
                 } else {

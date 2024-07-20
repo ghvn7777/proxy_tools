@@ -1,23 +1,15 @@
 use thiserror::Error;
 
-use crate::pb::CommandResponse;
-
 #[derive(Error, Debug)]
 pub enum VpnError {
     #[error("general error: {0}")]
     AnyError(#[from] anyhow::Error),
 
-    #[error("Failed to encode protobuf message")]
-    EncodeError(#[from] prost::EncodeError),
-
     #[error("Failed to decode protobuf message")]
     DecodeError(#[from] prost::DecodeError),
 
-    #[error("IO error: {0}")]
-    IoError(#[from] std::io::Error),
-
-    #[error("Stream error: {0}")]
-    StreamError(#[from] StreamError),
+    #[error("Failed to encode protobuf message")]
+    EncodeError(#[from] prost::EncodeError),
 
     #[error("Service error: {0}")]
     ServiceError(#[from] ServiceError),
@@ -28,38 +20,8 @@ pub enum VpnError {
     #[error("AddError: {0}")]
     AddrError(#[from] AddrError),
 
-    #[error("Internal error: {0}")]
-    InternalError(String),
-
-    #[error("Yamux connect error: {0}")]
-    YamuxConnectionError(#[from] yamux::ConnectionError),
-
-    #[error("Send stream data error: {0}")]
-    SendError(#[from] tokio::sync::mpsc::error::SendError<CommandResponse>),
-
-    #[error("Tcp connect error: {0}")]
-    TcpConnectkError(String),
-
-    #[error("Tcp disconnect error: {0}")]
-    TcpDisconnectError(String),
-
-    #[error("Tokio join error: {0}")]
-    JoinError(#[from] tokio::task::JoinError),
-
-    #[error("TLS error")]
-    TlsError(#[from] tokio_rustls::rustls::TLSError),
-
-    #[error("Certificate parse error: error to load {0} {0}")]
-    CertificateParseError(&'static str, &'static str),
-}
-
-#[derive(Error, Debug)]
-pub enum StreamError {
-    #[error("Frame is larger than max size")]
-    FrameTooLarge,
-
-    #[error("Frame send error: {0}")]
-    FrameSendError(#[from] futures::channel::mpsc::SendError),
+    #[error("IO error: {0}")]
+    IoError(#[from] std::io::Error),
 }
 
 #[derive(Error, Debug)]
@@ -99,6 +61,9 @@ pub enum Socks5Error {
 
     #[error("Socks command not supported")]
     SocksCommandNotSupported,
+
+    #[error("Socks general failure")]
+    GeneralFailure,
 }
 
 #[derive(Error, Debug)]

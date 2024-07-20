@@ -169,6 +169,12 @@ impl ToTargetAddr for (Ipv6Addr, u16) {
     }
 }
 
+impl ToTargetAddr for TargetAddr {
+    fn to_target_addr(&self) -> io::Result<TargetAddr> {
+        Ok(self.clone())
+    }
+}
+
 impl From<TargetAddr> for DestinationAddr {
     fn from(v: TargetAddr) -> Self {
         match v {
@@ -254,7 +260,7 @@ pub async fn read_address<T: AsyncRead + Unpin>(
     stream: &mut T,
     atyp: u8,
 ) -> Result<TargetAddr, VpnError> {
-    trace!("TargetAddr: read address");
+    trace!("in read Taarget Addr read_address()");
     let addr = match atyp {
         consts::SOCKS5_ADDR_TYPE_IPV4 => {
             debug!("Address type `IPv4`");

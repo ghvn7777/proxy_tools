@@ -36,7 +36,7 @@ impl VpnClientProstReadStream {
         while let Ok(res) = self.next().await {
             match res.response {
                 Some(Response::Heartbeat(_)) => {
-                    info!("Client read stream get heartbeat");
+                    // info!("Client read stream get heartbeat");
                     if sender
                         .send(ClientToSocks5Msg::Heartbeat.into())
                         .await
@@ -57,6 +57,43 @@ impl VpnClientProstReadStream {
                         .is_err()
                     {
                         warn!("Send data to socks5 failed");
+                    }
+                }
+                Some(Response::UdpData(udp_data)) => {
+                    info!(
+                        "Client read stream get udp data, id: {}, {:?}, {:?}",
+                        udp_data.id,
+                        udp_data.destination,
+                        udp_data.data.len()
+                    );
+                    let destination = match udp_data.destination {
+                        Some(udp_destination) => udp_destination.try_into().unwrap(),
+                        None => {
+                            error!("Udp data destination is none");
+                            if sender
+                                .send(ClientToSocks5Msg::ClosePort(udp_data.id).into())
+                                .await
+                                .is_err()
+                            {
+                                warn!("Send close port to socks5 failed");
+                            }
+                            continue;
+                        }
+                    };
+
+                    if sender
+                        .send(
+                            ClientToSocks5Msg::UdpData(
+                                udp_data.id,
+                                destination,
+                                Box::new(udp_data.data),
+                            )
+                            .into(),
+                        )
+                        .await
+                        .is_err()
+                    {
+                        warn!("Send udp data to socks5 failed");
                     }
                 }
                 Some(Response::ClosePort(port)) => {
@@ -98,6 +135,26 @@ impl VpnClientProstReadStream {
                         .is_err()
                     {
                         warn!("Send tcp connect failed to socks5 failed");
+                    }
+                }
+                Some(Response::UdpAssociateSuccess(id)) => {
+                    info!("Client read stream get udp associate success, id: {}", id);
+                    if sender
+                        .send(ClientToSocks5Msg::UdpAssociateSuccess(id).into())
+                        .await
+                        .is_err()
+                    {
+                        warn!("Send udp associate success to socks5 failed");
+                    }
+                }
+                Some(Response::UdpAssociateFailed(id)) => {
+                    info!("Client read stream get udp associate failed, id: {}", id);
+                    if sender
+                        .send(ClientToSocks5Msg::UdpAssociateFailed(id).into())
+                        .await
+                        .is_err()
+                    {
+                        warn!("Send udp associate failed to socks5 failed");
                     }
                 }
                 None => {

@@ -32,7 +32,7 @@ impl VpnServerProstReadStream {
         while let Ok(req) = self.next().await {
             match req.command {
                 Some(Command::Heartbeat(_)) => {
-                    info!("server read stream get heartbeat");
+                    // info!("server read stream get heartbeat");
                     if sender.send(ServerToRemote::Heartbeat.into()).await.is_err() {
                         error!("send heartbeat to remote failed");
                     }
@@ -53,6 +53,42 @@ impl VpnServerProstReadStream {
                             .is_err()
                         {
                             error!("send tcp connect to remote failed");
+                        }
+                    }
+                },
+                Some(Command::UdpAssociate(id)) => {
+                    debug!("server read stream udp connect id: {}", id);
+                    if sender
+                        .send(ServerToRemote::UdpAssociate(id).into())
+                        .await
+                        .is_err()
+                    {
+                        error!("send udp connect to remote failed");
+                    }
+                }
+                Some(Command::UdpData(udp_data)) => match udp_data.destination {
+                    None => {
+                        error!("udp data destination is none");
+                        continue;
+                    }
+                    Some(target_addr) => {
+                        let target_addr: TargetAddr = target_addr.try_into().unwrap();
+                        let id = udp_data.id;
+                        info!(
+                            "udp data: {}, {:?}, {:?}",
+                            id,
+                            target_addr,
+                            udp_data.data.len()
+                        );
+                        if sender
+                            .send(
+                                ServerToRemote::UdpData(id, target_addr, Box::new(udp_data.data))
+                                    .into(),
+                            )
+                            .await
+                            .is_err()
+                        {
+                            error!("send udp data to remote failed");
                         }
                     }
                 },

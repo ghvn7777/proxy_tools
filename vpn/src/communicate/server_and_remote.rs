@@ -11,20 +11,26 @@ pub enum ServerMsg {
 pub enum ServerToRemote {
     Heartbeat,
     TcpConnect(u32, TargetAddr),
+    UdpAssociate(u32),
     ClosePort(u32),
     Data(u32, Box<Vec<u8>>),
+    UdpData(u32, TargetAddr, Box<Vec<u8>>),
 }
 
 #[derive(Debug, Clone)]
 pub enum RemoteToServer {
     TcpConnectSuccess(u32, TargetAddr),
     TcpConnectFailed(u32),
+    UdpAssociateSuccess(u32),
+    UdpAssociateFailed(u32),
     Data(u32, Box<Vec<u8>>),
+    UdpData(u32, TargetAddr, Box<Vec<u8>>),
     ClosePort(u32),
 }
 
 pub enum RemoteMsg {
     Data(Box<Vec<u8>>),
+    UdpData(TargetAddr, Box<Vec<u8>>),
     ClosePort(u32),
 }
 
