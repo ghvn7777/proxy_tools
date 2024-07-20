@@ -110,7 +110,7 @@ async fn read_remote_tcp(
                 let msg = RemoteToServer::Data(id, Box::new(buf2)).into();
                 info!("Read remote tcp data len: {:?}", n);
                 if writer_tunnel.send(msg).await.is_err() {
-                    error!("Write tunnel error");
+                    error!("Write tunnel error 0");
                     break;
                 }
             }
@@ -125,7 +125,7 @@ async fn read_remote_tcp(
     info!("Read remote tcp end");
     let msg = RemoteToServer::ClosePort(id).into();
     if writer_tunnel.send(msg).await.is_err() {
-        error!("Write tunnel error");
+        error!("Write tunnel error 1");
     }
 }
 
@@ -164,7 +164,7 @@ async fn write_remote_tcp(
     let id = reader_tunnel.get_id();
     let msg = RemoteToServer::ClosePort(id).into();
     if reader_tunnel.send(msg).await.is_err() {
-        error!("Write tunnel error");
+        error!("Write tunnel error 2");
     }
 }
 
@@ -225,7 +225,7 @@ async fn read_remote_udp(id: u32, socket: &UdpSocket, mut writer_tunnel: TunnelW
                 let msg = RemoteToServer::UdpData(id, target_addr, Box::new(buf2)).into();
                 info!("Read remote udp data len: {:?}", n);
                 if writer_tunnel.send(msg).await.is_err() {
-                    error!("Write tunnel error");
+                    error!("Write tunnel error 3");
                     break;
                 }
             }
@@ -239,7 +239,7 @@ async fn read_remote_udp(id: u32, socket: &UdpSocket, mut writer_tunnel: TunnelW
     info!("Read remote udp end");
     let msg = RemoteToServer::ClosePort(0).into();
     if writer_tunnel.send(msg).await.is_err() {
-        error!("Write tunnel error");
+        error!("Write tunnel error 4");
     }
 }
 
@@ -299,6 +299,6 @@ async fn write_remote_udp(
     info!("Write remote udp end");
     let msg = RemoteToServer::ClosePort(id).into();
     if reader_tunnel.send(msg).await.is_err() {
-        error!("Write tunnel error");
+        error!("Write tunnel error 5");
     }
 }
