@@ -61,6 +61,9 @@ pub enum Socks5Error {
 
     #[error("Socks command not supported")]
     SocksCommandNotSupported,
+
+    #[error("Socks general failure")]
+    GeneralFailure,
 }
 
 #[derive(Error, Debug)]

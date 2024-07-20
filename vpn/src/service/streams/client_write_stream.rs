@@ -98,6 +98,11 @@ impl VpnClientProstWriteStream {
                 let msg = CommandRequest::new_tcp_connect(id, addr);
                 self.send(&msg).await?;
             }
+            Socks5ToClientMsg::UdpAssociate(id) => {
+                debug!("process_socks5_to_client: UdpAssociate: {}", id);
+                let msg = CommandRequest::new_associate_connect(id);
+                self.send(&msg).await?;
+            }
             Socks5ToClientMsg::Data(id, data) => {
                 info!("process_socks5_to_client data: {}, {:?}", id, data);
                 let msg = CommandRequest::new_data(id, *data);
@@ -161,6 +166,28 @@ impl VpnClientProstWriteStream {
                 if let Some(tx) = port_map.get_mut(&id) {
                     if tx.send(SocksMsg::TcpConnectFailed(id)).await.is_err() {
                         error!("process_client_to_socks5: Send TcpConnectFailed failed");
+                        port_map.remove(&id);
+                    }
+                } else {
+                    warn!("process_client_to_socks5: Port id not found: {}", id);
+                }
+            }
+            ClientToSocks5Msg::UdpAssociateSuccess(id) => {
+                debug!("process_client_to_socks5: UdpAssociateSuccess: {}", id);
+                if let Some(tx) = port_map.get_mut(&id) {
+                    if tx.send(SocksMsg::UdpAssociateSuccess(id)).await.is_err() {
+                        error!("process_client_to_socks5: Send UdpAssociateSuccess msg failed");
+                        port_map.remove(&id);
+                    }
+                } else {
+                    warn!("process_client_to_socks5: Port id not found: {}", id);
+                }
+            }
+            ClientToSocks5Msg::UdpAssociateFailed(id) => {
+                info!("process_client_to_socks5: UdpAssociateFailed: {}", id);
+                if let Some(tx) = port_map.get_mut(&id) {
+                    if tx.send(SocksMsg::UdpAssociateFailed(id)).await.is_err() {
+                        error!("process_client_to_socks5: Send UdpAssociateFailed msg failed");
                         port_map.remove(&id);
                     }
                 } else {

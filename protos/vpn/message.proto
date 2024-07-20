@@ -32,9 +32,10 @@ enum Heartbeat {
 message CommandRequest {
   oneof command {
       TcpConnect tcp_connect = 2;
-      Data data = 3;
-      uint32 close_port = 4;
-      Heartbeat heartbeat = 5;
+      uint32 udp_associate = 3;
+      Data data = 4;
+      uint32 close_port = 5;
+      Heartbeat heartbeat = 6;
   }
 }
 
@@ -49,6 +50,8 @@ message CommandResponse {
       uint32 close_port = 2;
       TcpConnectSuccess tcp_connect_success = 3;
       uint32 tcp_connect_failed = 4;
-      Heartbeat heartbeat = 5;
+      uint32 udp_associate_success = 5;
+      uint32 udp_associate_failed = 6;
+      Heartbeat heartbeat = 7;
   }
 }

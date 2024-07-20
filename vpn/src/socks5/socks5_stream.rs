@@ -51,15 +51,6 @@ where
         Ok(())
     }
 
-    /// Execute the socks5 command that the client wants.
-    pub async fn check_command(&mut self, cmd: &Socks5Command) -> Result<bool, VpnError> {
-        match cmd {
-            Socks5Command::TCPBind => Err(Socks5Error::SocksCommandNotSupported.into()),
-            Socks5Command::TCPConnect => Ok(true),
-            Socks5Command::UDPAssociate => Ok(false),
-        }
-    }
-
     pub async fn read(&mut self, buf: &mut [u8]) -> Result<usize, VpnError> {
         trace!("Socks5Stream: read");
         Ok(self
@@ -350,4 +341,19 @@ where
             .context("Can't reply auth success")?;
         Ok(())
     }
+}
+
+/// Parse data from UDP client on raw buffer, return (frag, target_addr, payload).
+pub async fn parse_udp_request(mut req: &[u8]) -> Result<(u8, TargetAddr, &[u8]), VpnError> {
+    let rsv = read_exact!(req, [0u8; 2]).context("Malformed request")?;
+
+    if !rsv.eq(&[0u8; 2]) {
+        return Err(Socks5Error::GeneralFailure.into());
+    }
+
+    let [frag, atyp] = read_exact!(req, [0u8; 2]).context("Malformed request")?;
+
+    let target_addr = read_address(&mut req, atyp).await?;
+
+    Ok((frag, target_addr, req))
 }

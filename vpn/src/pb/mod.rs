@@ -17,6 +17,12 @@ impl CommandRequest {
         }
     }
 
+    pub fn new_associate_connect(id: u32) -> Self {
+        Self {
+            command: Some(command_request::Command::UdpAssociate(id)),
+        }
+    }
+
     pub fn new_close_port(id: u32) -> Self {
         Self {
             command: Some(command_request::Command::ClosePort(id)),
@@ -57,6 +63,18 @@ impl CommandResponse {
     pub fn new_tcp_connect_failed(id: u32) -> Self {
         Self {
             response: Some(Response::TcpConnectFailed(id)),
+        }
+    }
+
+    pub fn new_udp_associate_success(id: u32) -> Self {
+        Self {
+            response: Some(Response::UdpAssociateSuccess(id)),
+        }
+    }
+
+    pub fn new_udp_associate_failed(id: u32) -> Self {
+        Self {
+            response: Some(Response::UdpAssociateFailed(id)),
         }
     }
 

@@ -11,8 +11,8 @@ use tokio_stream::StreamExt;
 use tracing::{debug, error, info, trace};
 
 use crate::{
-    interval, tunnel_port_task, RemoteMsg, RemoteToServer, ServerToRemote, TunnelReader,
-    TunnelWriter, ALIVE_TIMEOUT_TIME_MS, HEARTBEAT_INTERVAL_MS,
+    interval, tcp_tunnel_port_task, udp_tunnel_port_task, RemoteMsg, RemoteToServer,
+    ServerToRemote, TunnelReader, TunnelWriter, ALIVE_TIMEOUT_TIME_MS, HEARTBEAT_INTERVAL_MS,
 };
 use crate::{pb::CommandResponse, util::SubSenders, ServerMsg, VpnError};
 
@@ -116,7 +116,27 @@ impl VpnServerProstWriteStream {
                 };
 
                 tokio::spawn(async move {
-                    tunnel_port_task(target_addr, reader_remote, writer_remote).await;
+                    tcp_tunnel_port_task(target_addr, reader_remote, writer_remote).await;
+                });
+            }
+            ServerToRemote::UdpAssociate(id) => {
+                info!("Server udp connect id: {}", id);
+                let (tx, rx) = channel(1000);
+                server_port_map.insert(id, tx);
+                let sender = subsenders.get_one_sender();
+                let read_port = TunnelReader {
+                    id,
+                    tx: sender.clone(),
+                    rx: Some(rx),
+                };
+
+                let write_port = TunnelWriter {
+                    id,
+                    tx: sender.clone(),
+                };
+
+                tokio::spawn(async move {
+                    udp_tunnel_port_task(read_port, write_port).await;
                 });
             }
             ServerToRemote::Data(id, data) => {
@@ -157,6 +177,28 @@ impl VpnServerProstWriteStream {
                     .is_err()
                 {
                     error!("Server send tcp connect failed failed");
+                    server_port_map.remove(&id);
+                }
+            }
+            RemoteToServer::UdpAssociateSuccess(id) => {
+                debug!("Remote udp connect success: {}", id);
+                if self
+                    .send(&CommandResponse::new_udp_associate_success(id))
+                    .await
+                    .is_err()
+                {
+                    error!("Server send udp connect success failed");
+                    server_port_map.remove(&id);
+                }
+            }
+            RemoteToServer::UdpAssociateFailed(id) => {
+                info!("Remote udp connect failed: {}", id);
+                if self
+                    .send(&CommandResponse::new_udp_associate_failed(id))
+                    .await
+                    .is_err()
+                {
+                    error!("Server send udp connect failed failed");
                     server_port_map.remove(&id);
                 }
             }

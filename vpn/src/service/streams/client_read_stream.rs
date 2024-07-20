@@ -100,6 +100,26 @@ impl VpnClientProstReadStream {
                         warn!("Send tcp connect failed to socks5 failed");
                     }
                 }
+                Some(Response::UdpAssociateSuccess(id)) => {
+                    info!("Client read stream get udp associate success, id: {}", id);
+                    if sender
+                        .send(ClientToSocks5Msg::UdpAssociateSuccess(id).into())
+                        .await
+                        .is_err()
+                    {
+                        warn!("Send udp associate success to socks5 failed");
+                    }
+                }
+                Some(Response::UdpAssociateFailed(id)) => {
+                    info!("Client read stream get udp associate failed, id: {}", id);
+                    if sender
+                        .send(ClientToSocks5Msg::UdpAssociateFailed(id).into())
+                        .await
+                        .is_err()
+                    {
+                        warn!("Send udp associate failed to socks5 failed");
+                    }
+                }
                 None => {
                     warn!("Got an unknown response: {:?}", res);
                     return Err(ServiceError::UnknownCommand("Unknown response".to_string()).into());

@@ -6,6 +6,7 @@ use crate::util::TargetAddr;
 pub enum Socks5ToClientMsg {
     InitChannel(u32, Sender<SocksMsg>),
     TcpConnect(u32, TargetAddr),
+    UdpAssociate(u32),
     ClosePort(u32),
     Data(u32, Box<Vec<u8>>),
 }
@@ -17,6 +18,8 @@ pub enum ClientToSocks5Msg {
     ClosePort(u32),
     TcpConnectSuccess(u32, TargetAddr),
     TcpConnectFailed(u32),
+    UdpAssociateSuccess(u32),
+    UdpAssociateFailed(u32),
 }
 
 #[derive(Debug, Clone)]
@@ -32,6 +35,8 @@ pub enum SocksMsg {
     ClosePort(u32),
     TcpConnectSuccess(u32, TargetAddr),
     TcpConnectFailed(u32),
+    UdpAssociateSuccess(u32),
+    UdpAssociateFailed(u32),
 }
 
 impl From<Socks5ToClientMsg> for ClientMsg {

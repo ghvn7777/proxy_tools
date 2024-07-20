@@ -2,7 +2,7 @@ use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{
         tcp::{OwnedReadHalf, OwnedWriteHalf},
-        TcpStream,
+        TcpStream, UdpSocket,
     },
 };
 use tracing::{debug, error, info, trace, warn};
@@ -12,12 +12,12 @@ use crate::{
     RemoteMsg, RemoteToServer, ServerMsg, TunnelReader, TunnelWriter,
 };
 
-pub async fn tunnel_port_task(
+pub async fn tcp_tunnel_port_task(
     target_addr: TargetAddr,
     reader_tunnel: TunnelReader<ServerMsg, RemoteMsg>,
     mut writer_tunnel: TunnelWriter<ServerMsg>,
 ) {
-    trace!("runnel_port_task: start");
+    trace!("tcp_runnel_port_task: start");
     let id = reader_tunnel.get_id();
     let target_addr_clone = target_addr.clone();
     let stream = match target_addr {
@@ -86,7 +86,7 @@ pub async fn tunnel_port_task(
         }
     };
     // join!(w, r);
-    info!("Server tunnel port task end id: {}", id);
+    info!("Server tunnel port tcp task end id: {}", id);
 }
 
 async fn read_remote_tcp(
@@ -160,4 +160,47 @@ async fn write_remote_tcp(
     if reader_tunnel.send(msg).await.is_err() {
         error!("Write tunnel error");
     }
+}
+
+pub async fn udp_tunnel_port_task(
+    reader_tunnel: TunnelReader<ServerMsg, RemoteMsg>,
+    mut writer_tunnel: TunnelWriter<ServerMsg>,
+) {
+    trace!("udp_runnel_port_task: start");
+    let id = reader_tunnel.get_id();
+
+    // Listen with UDP6 socket, so the client can connect to it with either
+    // IPv4 or IPv6.
+    let _socket = match UdpSocket::bind("[::]:0").await {
+        Ok(socket) => socket,
+        Err(e) => {
+            error!("Bind udp socket failed: {:?}", e);
+            let _ = writer_tunnel
+                .send(RemoteToServer::UdpAssociateFailed(id).into())
+                .await;
+            let _ = writer_tunnel
+                .send(RemoteToServer::ClosePort(id).into())
+                .await;
+            return;
+        }
+    };
+
+    let _ = writer_tunnel
+        .send(RemoteToServer::UdpAssociateSuccess(id).into())
+        .await;
+
+    // let (reader, writer) = stream.into_split();
+    // let r = read_remote_tcp(id, reader, writer_tunnel);
+    // let w = write_remote_tcp(writer, reader_tunnel);
+
+    // tokio::select! {
+    //     _ = r => {
+    //         info!("Read remote udp task end");
+    //     }
+    //     _ = w => {
+    //         info!("Write remote udp task end");
+    //     }
+    // };
+    // // join!(w, r);
+    // info!("Server tunnel port task udp end id: {}", id);
 }

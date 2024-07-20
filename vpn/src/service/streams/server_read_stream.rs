@@ -56,6 +56,16 @@ impl VpnServerProstReadStream {
                         }
                     }
                 },
+                Some(Command::UdpAssociate(id)) => {
+                    debug!("server read stream udp connect id: {}", id);
+                    if sender
+                        .send(ServerToRemote::UdpAssociate(id).into())
+                        .await
+                        .is_err()
+                    {
+                        error!("send udp connect to remote failed");
+                    }
+                }
                 Some(Command::ClosePort(id)) => {
                     debug!("stream reader close port id: {}", id);
                     if sender
