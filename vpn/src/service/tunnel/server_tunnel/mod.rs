@@ -20,6 +20,9 @@ use crate::{
     RemoteMsg, RemoteToServer, ServerMsg, TunnelReader, TunnelWriter,
 };
 
+// 5 minutes
+const SERVER_UDP_READ_TIMEOUT: Duration = Duration::from_secs(60 * 5);
+
 pub async fn tcp_tunnel_port_task(
     target_addr: TargetAddr,
     reader_tunnel: TunnelReader<ServerMsg, RemoteMsg>,
@@ -266,7 +269,7 @@ async fn read_remote_udp(
             }
             Err(e) => {
                 let duration = Instant::now() - now;
-                if duration > Duration::from_secs(10) {
+                if duration > SERVER_UDP_READ_TIMEOUT {
                     error!("Server Udp Socket id: {} read timeout: {:?}", id, duration);
                     break;
                 }

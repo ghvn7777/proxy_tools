@@ -235,6 +235,8 @@ impl Socks5ServerStream<TcpStream> {
 
         // 因为 udp_proxy_socks_read 里面用的 async_std 的 timeout，没有阻塞到 future 里，所以无法通过 tokio::select! 退出
         // 我们在这里用一个 atomic bool 来控制退出
+        // 服务器还有个超时时间控制退出，如果超时时间到了，就会发送 close port 指令退出
+        // 客户端这里就不做了，因为有个和 client 的 TCP 连接，不用超时作为退出条件，用 TCP 连接断开作为退出条件
         let running = AtomicBool::new(true);
         // since the UDP associate is established, we can know the client addr,
         // so we can send the client addr to the writer through channel when we receive the first packet
