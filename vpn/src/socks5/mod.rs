@@ -1,7 +1,11 @@
 use std::{net::SocketAddr, sync::Arc};
 
 use anyhow::Result;
-use socks5_stream::{parse_udp_request, Socks5Stream};
+use futures::{
+    channel::mpsc::{self, Receiver, Sender},
+    SinkExt, StreamExt,
+};
+use socks5_stream::{new_udp_header, parse_udp_request, Socks5Stream};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{
@@ -197,10 +201,10 @@ impl Socks5ServerStream<TcpStream> {
 
         // TODO: 如果 local_addr 是 127.0.0.1:x 的话
         // 那应该只能代理在本地 udp 流量，后续可以考虑用局域网地址，可以代理局域网 udp 流量
-        // 这里和 tcp 代理不一样，因为 tcp 是只往 socket server 发数据，socks server 监听 0.0.0.0:0
-        // 而 udp 代理要新建一个 udp socket 来接收代理数据
-        info!("reply udp associate local addr: {:?}", socket.local_addr()?);
+        // 这里和 tcp 代理不一样，因为 tcp 是只往 socket server 固定端口发数据，socks server 监听 0.0.0.0
+        // 而 udp 代理每次要新建一个 udp socket 来接收代理数据
         if success {
+            info!("reply udp associate local addr: {:?}", socket.local_addr()?);
             if stream.send_reply(0, socket.local_addr()?).await.is_err() {
                 error!("Socks5 proxy send reply error");
                 write_port
@@ -216,32 +220,60 @@ impl Socks5ServerStream<TcpStream> {
             return Ok(());
         }
 
-        let r = udp_proxy_socks_read(&socket, &mut write_port);
-        let w = udp_proxy_socks_write(&socket, &mut read_port);
+        // since the UDP associate is established, we can know the client addr,
+        // so we can send the client addr to the writer through channel when we receive the first packet
+        let (client_addr_tx, client_addr_rx) = mpsc::channel(1);
+        let r = udp_proxy_socks_read(&socket, &mut write_port, client_addr_tx);
+        let w = udp_proxy_socks_write(&socket, &mut read_port, client_addr_rx);
+        // 协议要求 tcp 保持连接，不然认为 udp 代理需要断开
+        let h = tcp_connection_holder(stream.stream);
         // join!(r, w);
         tokio::select! {
             _ = r => {
-                info!("Socks5 proxy read end");
+                info!("Socks5 udp proxy read end");
             }
             _ = w => {
-                info!("Socks5 proxy write end");
+                info!("Socks5 udp proxy write end");
+            }
+            _ = h => {
+                info!("Socks5 udp proxy holder end");
             }
         };
-        info!("Socks5 tcp proxy finished id: {}", read_port.get_id());
+        info!("Socks5 udp proxy finished id: {}", read_port.get_id());
 
         Ok(())
     }
 }
 
-async fn udp_proxy_socks_read(inbound: &UdpSocket, write_port: &mut TunnelWriter<ClientMsg>) {
-    let mut buf = vec![0u8; 1024 * 4];
+async fn udp_proxy_socks_read(
+    inbound: &UdpSocket,
+    write_port: &mut TunnelWriter<ClientMsg>,
+    mut client_addr_tx: Sender<SocketAddr>,
+) {
+    let id = write_port.get_id();
+    // 这里的 buffer 大了一些，因为 udp 是不可靠的，如果数据包太大，buffer 小了可能会导致数据丢失
+    let mut buf = vec![0u8; 1024 * 10];
+    let mut send_client_add_flag = false;
     loop {
         match inbound.recv_from(&mut buf).await {
             Ok((n, client_addr)) => {
-                debug!("Socks5 server receive udp from {}", client_addr);
-                let mut buf2 = Vec::with_capacity(n);
-                buf2.extend_from_slice(&buf[0..n]);
-                let Ok((frag, _target_addr, _data)) = parse_udp_request(&buf[..n]).await else {
+                debug!("Socks5 udp server receive {} bytes from {}", n, client_addr);
+                if !send_client_add_flag {
+                    debug!("Sending client addr: {}", client_addr);
+                    if client_addr_tx.send(client_addr).await.is_err() {
+                        error!("Send client addr error");
+                        break;
+                    }
+                    send_client_add_flag = true;
+                }
+
+                // 这里参数很有意思， 传进去的是 &[u8]，也就是这段数据不能变，接收参数是 mut req: &[u8],
+                // 这里参数细节是，参数只要保证数据是不可变的就行，也就是 &[u8] 是个不可变引用，
+                // 但是 req 本身可以变，相当于指针可以变，但是指针指向的数据不能变，
+                // 也就是 req = req2 可以，req[0] = 1 不行
+                // 另外说明一下，里面参数声明为 mut req: &[u8]，是因为 read_exac! 宏要用 req 模拟 stream 读取数据
+                // 不需要改变数据，比如说读取完 2 个字节，只需要改变 req 的指针就行，所以这里是 &mut req
+                let Ok((frag, target_addr, data)) = parse_udp_request(&buf[..n]).await else {
                     error!("Parse UDP request error");
                     continue;
                 };
@@ -252,14 +284,20 @@ async fn udp_proxy_socks_read(inbound: &UdpSocket, write_port: &mut TunnelWriter
                     break; // 不支持分片，分片的 UDP 包还不如直接走 TCP
                 }
 
-                // if write_port
-                //     .send(Socks5ToClientMsg::UdpData(client_addr, Box::new(buf2)).into())
-                //     .await
-                //     .is_err()
-                // {
-                //     warn!("Socks5 read send data error");
-                //     break;
-                // }
+                debug!("UDP target addr: {}", target_addr);
+                debug!("UDP data len: {}", data.len());
+
+                // TODO: 还有别人的代码一般不支持 domain，我这里没检查直接发到服务器解析，不知道他们不支持是不是有什么考虑
+                let mut buf2 = Vec::with_capacity(data.len());
+                buf2.extend_from_slice(&data[0..data.len()]);
+                if write_port
+                    .send(Socks5ToClientMsg::UdpData(id, target_addr, Box::new(buf2)).into())
+                    .await
+                    .is_err()
+                {
+                    warn!("Socks5 read send data error");
+                    break;
+                }
             }
             Err(e) => {
                 warn!("Socks5 udp read error: {:?}", e);
@@ -278,9 +316,106 @@ async fn udp_proxy_socks_read(inbound: &UdpSocket, write_port: &mut TunnelWriter
 }
 
 async fn udp_proxy_socks_write(
-    _inbound: &UdpSocket,
-    _read_port: &mut TunnelReader<ClientMsg, SocksMsg>,
+    inbound: &UdpSocket,
+    read_port: &mut TunnelReader<ClientMsg, SocksMsg>,
+    mut client_addr_rx: Receiver<SocketAddr>,
 ) {
+    let id = read_port.get_id();
+    let client_addr = match client_addr_rx.next().await {
+        Some(addr) => addr,
+        None => {
+            error!("Client addr is none");
+            read_port.rx = None;
+            if read_port
+                .send(Socks5ToClientMsg::ClosePort(0).into())
+                .await
+                .is_err()
+            {
+                error!("Socks5 udp write send close port error");
+            }
+            return;
+        }
+    };
+
+    info!(
+        "Udp proxy socks {} writer get client addr: {}",
+        id, client_addr
+    );
+
+    // 这里如果关闭注释，进行 connect，后面需要用 send_to 函数指定地址发送，现在 connect 后直接用 send 就可以了
+    // 感觉这样更好，不用每次都指定地址
+    if inbound.connect(client_addr).await.is_err() {
+        error!("Udp proxy socks writer connect client addr error");
+        read_port.rx = None;
+        if read_port
+            .send(Socks5ToClientMsg::ClosePort(0).into())
+            .await
+            .is_err()
+        {
+            error!("Socks5 udp write send close port error");
+        }
+        return;
+    }
+
+    loop {
+        match read_port.read().await {
+            Some(SocksMsg::UdpData(target_addr, data)) => {
+                // 这里我们支持域名格式
+                debug!("Socks5 udp write {} bytes to {}", data.len(), client_addr);
+                let Ok(mut udp_data) = new_udp_header(target_addr) else {
+                    error!("New UDP header error");
+                    break;
+                };
+
+                udp_data.extend_from_slice(&data[..data.len()]);
+                // let _ = inbound.send_to(&data, client_addr).await;
+                if inbound.send(&udp_data).await.is_err() {
+                    warn!("Socks5 udp write error");
+                    break;
+                }
+            }
+            Some(SocksMsg::ClosePort(id)) => {
+                info!("Socks5 udp write close port id: {}", id);
+                break;
+            }
+            Some(msg) => {
+                warn!("Socks5 udp write get unexpected msg: {:?}", msg);
+                break;
+            }
+            None => {
+                warn!("Socks5 udp write get None");
+                break;
+            }
+        }
+    }
+
+    read_port.rx = None;
+    if read_port
+        .send(Socks5ToClientMsg::ClosePort(0).into())
+        .await
+        .is_err()
+    {
+        error!("Socks5 udp write send close port error");
+    }
+}
+
+async fn tcp_connection_holder(mut stream: TcpStream) {
+    let mut buf = vec![0u8; 1024];
+    loop {
+        match stream.read(&mut buf).await {
+            Ok(0) => {
+                info!("Socks5 tcp connection holder read 0 bytes");
+                break;
+            }
+            Ok(n) => {
+                info!("Socks5 tcp connection holder read {} bytes", n);
+            }
+            Err(e) => {
+                warn!("Socks5 tcp connection holder read error: {:?}", e);
+                break;
+            }
+        }
+    }
 }
 
 async fn tcp_proxy_socks_read(mut reader: OwnedReadHalf, write_port: &mut TunnelWriter<ClientMsg>) {

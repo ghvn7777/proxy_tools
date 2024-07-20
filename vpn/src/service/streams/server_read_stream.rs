@@ -66,6 +66,32 @@ impl VpnServerProstReadStream {
                         error!("send udp connect to remote failed");
                     }
                 }
+                Some(Command::UdpData(udp_data)) => match udp_data.destination {
+                    None => {
+                        error!("udp data destination is none");
+                        continue;
+                    }
+                    Some(target_addr) => {
+                        let target_addr: TargetAddr = target_addr.try_into().unwrap();
+                        let id = udp_data.id;
+                        info!(
+                            "udp data: {}, {:?}, {:?}",
+                            id,
+                            target_addr,
+                            udp_data.data.len()
+                        );
+                        if sender
+                            .send(
+                                ServerToRemote::UdpData(id, target_addr, Box::new(udp_data.data))
+                                    .into(),
+                            )
+                            .await
+                            .is_err()
+                        {
+                            error!("send udp data to remote failed");
+                        }
+                    }
+                },
                 Some(Command::ClosePort(id)) => {
                     debug!("stream reader close port id: {}", id);
                     if sender

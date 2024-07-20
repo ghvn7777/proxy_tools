@@ -8,7 +8,7 @@ use tracing::{debug, trace};
 
 use crate::{
     read_exact,
-    util::{read_address, TargetAddr},
+    util::{read_address, TargetAddr, ToTargetAddr},
     AuthInfo, AuthType, Socks5Error, VpnError,
 };
 
@@ -341,6 +341,38 @@ where
             .context("Can't reply auth success")?;
         Ok(())
     }
+}
+
+/// Generate UDP header
+///
+/// # UDP Request header structure.
+/// ```text
+/// +----+------+------+----------+----------+----------+
+/// |RSV | FRAG | ATYP | DST.ADDR | DST.PORT |   DATA   |
+/// +----+------+------+----------+----------+----------+
+/// | 2  |  1   |  1   | Variable |    2     | Variable |
+/// +----+------+------+----------+----------+----------+
+///
+/// The fields in the UDP request header are:
+///
+///     o  RSV  Reserved X'0000'
+///     o  FRAG    Current fragment number
+///     o  ATYP    address type of following addresses:
+///        o  IP V4 address: X'01'
+///        o  DOMAINNAME: X'03'
+///        o  IP V6 address: X'04'
+///     o  DST.ADDR       desired destination address
+///     o  DST.PORT       desired destination port
+///     o  DATA     user data
+/// ```
+pub fn new_udp_header<T: ToTargetAddr>(target_addr: T) -> Result<Vec<u8>> {
+    let mut header = vec![
+        0, 0, // RSV
+        0, // FRAG
+    ];
+    header.append(&mut target_addr.to_target_addr()?.to_be_bytes()?);
+
+    Ok(header)
 }
 
 /// Parse data from UDP client on raw buffer, return (frag, target_addr, payload).

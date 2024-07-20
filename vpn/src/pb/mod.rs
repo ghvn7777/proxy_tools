@@ -35,6 +35,16 @@ impl CommandRequest {
         }
     }
 
+    pub fn new_udp_data(id: u32, target_addr: TargetAddr, data: Vec<u8>) -> Self {
+        Self {
+            command: Some(command_request::Command::UdpData(UdpData {
+                id,
+                destination: Some(target_addr.into()),
+                data,
+            })),
+        }
+    }
+
     pub fn new_heartbeat() -> Self {
         Self {
             command: Some(command_request::Command::Heartbeat(
@@ -48,6 +58,16 @@ impl CommandResponse {
     pub fn new_data(id: u32, data: Vec<u8>) -> Self {
         Self {
             response: Some(Response::Data(Data { id, data })),
+        }
+    }
+
+    pub fn new_udp_data(id: u32, target_addr: TargetAddr, data: Vec<u8>) -> Self {
+        Self {
+            response: Some(Response::UdpData(UdpData {
+                id,
+                destination: Some(target_addr.into()),
+                data,
+            })),
         }
     }
 

@@ -169,6 +169,12 @@ impl ToTargetAddr for (Ipv6Addr, u16) {
     }
 }
 
+impl ToTargetAddr for TargetAddr {
+    fn to_target_addr(&self) -> io::Result<TargetAddr> {
+        Ok(self.clone())
+    }
+}
+
 impl From<TargetAddr> for DestinationAddr {
     fn from(v: TargetAddr) -> Self {
         match v {

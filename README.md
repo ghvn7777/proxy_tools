@@ -2,9 +2,15 @@
 
 Browser SiwthyOmega -> [Local SocksServer -> LocalClient] -> Server -> Remote
 
-## Installation
+
+## Dependencies
 ```
 sudo apt install protobuf-compiler
+```
+
+## Build
+```
+cargo build --release
 ```
 
 ## Structure

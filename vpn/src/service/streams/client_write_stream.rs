@@ -108,6 +108,14 @@ impl VpnClientProstWriteStream {
                 let msg = CommandRequest::new_data(id, *data);
                 self.send(&msg).await?;
             }
+            Socks5ToClientMsg::UdpData(id, target_addr, data) => {
+                info!(
+                    "process_socks5_to_client udp data: {}, {:?}, {:?}",
+                    id, target_addr, data
+                );
+                let msg = CommandRequest::new_udp_data(id, target_addr, *data);
+                self.send(&msg).await?;
+            }
         }
         Ok(())
     }
@@ -128,6 +136,21 @@ impl VpnClientProstWriteStream {
                 if let Some(tx) = port_map.get_mut(&id) {
                     if tx.send(SocksMsg::Data(data)).await.is_err() {
                         error!("process_client_to_socks5: Send data failed");
+                        port_map.remove(&id);
+                    }
+                } else {
+                    warn!("process_client_to_socks5: Port id not found: {}", id);
+                }
+            }
+            ClientToSocks5Msg::UdpData(id, target_addr, data) => {
+                debug!(
+                    "process_client_to_socks5 udp data: {}, {:?}",
+                    id,
+                    data.len()
+                );
+                if let Some(tx) = port_map.get_mut(&id) {
+                    if tx.send(SocksMsg::UdpData(target_addr, data)).await.is_err() {
+                        error!("process_client_to_socks5: Send udp data failed");
                         port_map.remove(&id);
                     }
                 } else {

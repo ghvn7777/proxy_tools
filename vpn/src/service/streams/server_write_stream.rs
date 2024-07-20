@@ -148,6 +148,19 @@ impl VpnServerProstWriteStream {
                     }
                 }
             }
+            ServerToRemote::UdpData(id, target_addr, data) => {
+                info!("Server get udp data: {:?}", data.len());
+                if let Some(tx) = server_port_map.get_mut(&id) {
+                    if tx
+                        .send(RemoteMsg::UdpData(target_addr, data))
+                        .await
+                        .is_err()
+                    {
+                        info!("Server send udp data failed");
+                        server_port_map.remove(&id);
+                    }
+                }
+            }
         }
     }
 
@@ -207,6 +220,14 @@ impl VpnServerProstWriteStream {
                 let msg = CommandResponse::new_data(id, *data);
                 if self.send(&msg).await.is_err() {
                     error!("Server send data failed");
+                    server_port_map.remove(&id);
+                }
+            }
+            RemoteToServer::UdpData(id, target_addr, data) => {
+                debug!("Remote get udp data: {}, {:?}", id, data.len());
+                let msg = CommandResponse::new_udp_data(id, target_addr, *data);
+                if self.send(&msg).await.is_err() {
+                    error!("Server send udp data failed");
                     server_port_map.remove(&id);
                 }
             }

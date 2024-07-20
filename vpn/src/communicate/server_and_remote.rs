@@ -14,6 +14,7 @@ pub enum ServerToRemote {
     UdpAssociate(u32),
     ClosePort(u32),
     Data(u32, Box<Vec<u8>>),
+    UdpData(u32, TargetAddr, Box<Vec<u8>>),
 }
 
 #[derive(Debug, Clone)]
@@ -23,11 +24,13 @@ pub enum RemoteToServer {
     UdpAssociateSuccess(u32),
     UdpAssociateFailed(u32),
     Data(u32, Box<Vec<u8>>),
+    UdpData(u32, TargetAddr, Box<Vec<u8>>),
     ClosePort(u32),
 }
 
 pub enum RemoteMsg {
     Data(Box<Vec<u8>>),
+    UdpData(TargetAddr, Box<Vec<u8>>),
     ClosePort(u32),
 }
 
