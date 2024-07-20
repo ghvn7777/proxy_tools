@@ -36,7 +36,7 @@ impl VpnClientProstReadStream {
         while let Ok(res) = self.next().await {
             match res.response {
                 Some(Response::Heartbeat(_)) => {
-                    info!("Client read stream get heartbeat");
+                    // info!("Client read stream get heartbeat");
                     if sender
                         .send(ClientToSocks5Msg::Heartbeat.into())
                         .await

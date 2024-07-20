@@ -153,7 +153,7 @@ where
         // Guess address type
         let target_addr = read_address(&mut self.stream, address_type).await?;
 
-        debug!("Request target is {}", target_addr);
+        debug!("read_command() get request target is {}", target_addr);
 
         Ok((cmd, target_addr))
     }

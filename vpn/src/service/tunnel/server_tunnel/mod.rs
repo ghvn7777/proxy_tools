@@ -1,10 +1,11 @@
-use std::net::ToSocketAddrs;
+use std::{net::ToSocketAddrs, time::Duration};
 
+use async_std::{io, net::UdpSocket};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{
         tcp::{OwnedReadHalf, OwnedWriteHalf},
-        TcpStream, UdpSocket,
+        TcpStream,
     },
 };
 use tracing::{debug, error, info, trace, warn};
@@ -164,7 +165,7 @@ async fn write_remote_tcp(
     let id = reader_tunnel.get_id();
     let msg = RemoteToServer::ClosePort(id).into();
     if reader_tunnel.send(msg).await.is_err() {
-        error!("Write tunnel error 2");
+        warn!("Write tunnel error 2");
     }
 }
 
@@ -174,6 +175,10 @@ pub async fn udp_tunnel_port_task(
 ) {
     trace!("udp_runnel_port_task: start");
     let id = reader_tunnel.get_id();
+
+    // Only ipv4， 先留着，万一环境不支持 ipv6 就用这个
+    // 只监听 ipv4 的话下面还有个 target_addr.set_ip 也要注释掉
+    // let socket = match UdpSocket::bind("0.0.0.0:0").await {
 
     // Listen with UDP6 socket, so the client can connect to it with either
     // IPv4 or IPv6.
@@ -190,6 +195,10 @@ pub async fn udp_tunnel_port_task(
             return;
         }
     };
+    info!(
+        "server udp socket bind success: {}",
+        socket.local_addr().unwrap()
+    );
 
     let _ = writer_tunnel
         .send(RemoteToServer::UdpAssociateSuccess(id).into())
@@ -213,7 +222,8 @@ pub async fn udp_tunnel_port_task(
 async fn read_remote_udp(id: u32, socket: &UdpSocket, mut writer_tunnel: TunnelWriter<ServerMsg>) {
     let mut buf = vec![0u8; 1024 * 4];
     loop {
-        match socket.recv_from(&mut buf).await {
+        let res = io::timeout(Duration::from_millis(100), socket.recv_from(&mut buf)).await;
+        match res {
             Ok((n, source)) => {
                 let Ok(target_addr) = source.to_target_addr() else {
                     error!("Read remote udp target addr failed");
@@ -229,9 +239,12 @@ async fn read_remote_udp(id: u32, socket: &UdpSocket, mut writer_tunnel: TunnelW
                     break;
                 }
             }
-            Err(_) => {
-                error!("Server Udp Socket read error");
-                break;
+            Err(e) => {
+                info!(
+                    "Server Udp Socket id: {} read error(maybe timeout): {:?}",
+                    id, e
+                );
+                // break;
             }
         }
     }
@@ -252,7 +265,11 @@ async fn write_remote_udp(
         match reader_tunnel.read().await {
             Some(msg) => match msg {
                 RemoteMsg::UdpData(target_addr, data) => {
-                    info!("Write remote udp data: {}, {:?}", target_addr, data.len());
+                    info!(
+                        "Write remote udp data: {}, data len = {}",
+                        target_addr,
+                        data.len()
+                    );
                     // 因为国内的 DNS 服务器有 DNS 污染，会返回错误的 IP 地址，所以不在客户端解析
                     let Ok(target_addr) = target_addr.resolve_dns().await else {
                         error!("Write remote udp target addr failed");
@@ -269,10 +286,13 @@ async fn write_remote_udp(
                         continue;
                     };
 
+                    // 现在转成 ipv6，如果网络不支持，把上面 bind 的 ipv6 换成 ipv4，这里注释掉就行了
                     target_addr.set_ip(match target_addr.ip() {
                         std::net::IpAddr::V4(v4) => std::net::IpAddr::V6(v4.to_ipv6_mapped()),
                         v6 @ std::net::IpAddr::V6(_) => v6,
                     });
+                    debug!("Write remote udp target addr: {:?}", target_addr);
+                    debug!("Write remote udp data: {:?}", data);
 
                     if socket.send_to(&data, target_addr).await.is_err() {
                         warn!("Write remote udp error");

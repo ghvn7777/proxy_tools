@@ -25,7 +25,7 @@ impl VpnClientProstWriteStream {
     pub async fn send(&mut self, msg: &CommandRequest) -> Result<(), VpnError> {
         let mut buf = Vec::new();
         msg.encode(&mut buf)?;
-        info!("send msg len: {}", buf.len());
+        // info!("send msg len: {}", buf.len());
         self.inner.write_i32(buf.len() as i32).await?;
         self.inner.write_all(&buf).await?;
         Ok(())
@@ -41,7 +41,7 @@ impl VpnClientProstWriteStream {
             match msg_stream.next().await {
                 Some(msg) => match msg {
                     ClientMsg::Heartbeat => {
-                        info!("Client Msg receive heartbeat");
+                        // info!("Client Msg receive heartbeat");
                         if Instant::now() - alive_time
                             > Duration::from_millis(ALIVE_TIMEOUT_TIME_MS)
                         {
@@ -75,7 +75,7 @@ impl VpnClientProstWriteStream {
         msg: Socks5ToClientMsg,
         port_map: &mut ClientPortMap,
     ) -> Result<(), VpnError> {
-        trace!("process_socks5_to_client: {:?}", msg);
+        trace!("process_socks5_to_client msg: {:?}", msg);
         match msg {
             Socks5ToClientMsg::InitChannel(id, tx) => {
                 if port_map.insert(id, tx).is_some() {
@@ -109,10 +109,10 @@ impl VpnClientProstWriteStream {
                 self.send(&msg).await?;
             }
             Socks5ToClientMsg::UdpData(id, target_addr, data) => {
-                info!(
-                    "process_socks5_to_client udp data: {}, {:?}, {:?}",
-                    id, target_addr, data
-                );
+                // info!(
+                //     "process_socks5_to_client udp data: {}, {:?}, {:?}",
+                //     id, target_addr, data
+                // );
                 let msg = CommandRequest::new_udp_data(id, target_addr, *data);
                 self.send(&msg).await?;
             }
@@ -129,7 +129,7 @@ impl VpnClientProstWriteStream {
         match msg {
             ClientToSocks5Msg::Heartbeat => {
                 // 啥也不用干，在上面更新了时间
-                info!("process client: Client WriteStream receive heartbeat");
+                // info!("process client: Client WriteStream receive heartbeat");
             }
             ClientToSocks5Msg::Data(id, data) => {
                 // debug!("process_client_to_socks5 data: {}, {:?}", id, data);

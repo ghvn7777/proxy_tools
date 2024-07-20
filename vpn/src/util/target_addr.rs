@@ -260,7 +260,7 @@ pub async fn read_address<T: AsyncRead + Unpin>(
     stream: &mut T,
     atyp: u8,
 ) -> Result<TargetAddr, VpnError> {
-    trace!("TargetAddr: read address");
+    trace!("in read Taarget Addr read_address()");
     let addr = match atyp {
         consts::SOCKS5_ADDR_TYPE_IPV4 => {
             debug!("Address type `IPv4`");

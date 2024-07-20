@@ -10,7 +10,7 @@ use vpn::{client::proxy_tunnels, ClientConfig, TcpTunnel};
 async fn main() -> Result<()> {
     let config = Arc::new(ClientConfig::parse());
 
-    let layer = Layer::new().with_filter(LevelFilter::ERROR);
+    let layer = Layer::new().with_filter(LevelFilter::DEBUG);
     tracing_subscriber::registry().with(layer).init();
 
     let cnt = config.tunnel_cnt.unwrap_or(10);

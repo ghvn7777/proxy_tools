@@ -30,7 +30,7 @@ impl VpnServerProstWriteStream {
     pub async fn send(&mut self, msg: &CommandResponse) -> Result<(), VpnError> {
         let mut buf = Vec::new();
         msg.encode(&mut buf)?;
-        info!("send msg len: {}", buf.len());
+        // info!("send msg len: {}", buf.len());
         self.inner.write_i32(buf.len() as i32).await?;
         self.inner.write_all(&buf).await?;
         Ok(())
@@ -50,7 +50,7 @@ impl VpnServerProstWriteStream {
         loop {
             match msg_stream.next().await {
                 Some(ServerMsg::Heartbeat) => {
-                    info!("Server heartbeat");
+                    // info!("Server heartbeat");
                     // info!("alive time {:?}, now {:?}", alive_time, Instant::now());
                     if Instant::now() - alive_time > Duration::from_millis(ALIVE_TIMEOUT_TIME_MS) {
                         error!("Server heartbeat timeout");
@@ -73,7 +73,7 @@ impl VpnServerProstWriteStream {
                 }
             }
         }
-        info!("Server WriteStream end");
+        error!("Server WriteStream end");
 
         Ok(())
     }
@@ -87,7 +87,7 @@ impl VpnServerProstWriteStream {
         trace!("Server to remote: {:?}", msg);
         match msg {
             ServerToRemote::Heartbeat => {
-                info!("Server heartbeat");
+                // info!("Server heartbeat");
                 if self.send(&CommandResponse::new_heartbeat()).await.is_err() {
                     error!("Server send heartbeat failed");
                 }

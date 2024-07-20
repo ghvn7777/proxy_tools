@@ -32,7 +32,7 @@ impl VpnServerProstReadStream {
         while let Ok(req) = self.next().await {
             match req.command {
                 Some(Command::Heartbeat(_)) => {
-                    info!("server read stream get heartbeat");
+                    // info!("server read stream get heartbeat");
                     if sender.send(ServerToRemote::Heartbeat.into()).await.is_err() {
                         error!("send heartbeat to remote failed");
                     }
