@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use anyhow::Result;
 
 use futures::{channel::mpsc::Sender, SinkExt};
@@ -11,16 +13,20 @@ use crate::{
         CommandResponse, TcpConnectSuccess,
     },
     util::TargetAddr,
-    ClientMsg, ClientToSocks5Msg, ServiceError, VpnError,
+    ClientMsg, ClientToSocks5Msg, ServiceError, TextCrypt, VpnError,
 };
 
 pub struct VpnClientProstReadStream {
     pub inner: OwnedReadHalf,
+    pub crypt: Arc<Box<dyn TextCrypt>>,
 }
 
 impl VpnClientProstReadStream {
-    pub fn new(stream: OwnedReadHalf) -> Self {
-        Self { inner: stream }
+    pub fn new(stream: OwnedReadHalf, crypt: Arc<Box<dyn TextCrypt>>) -> Self {
+        Self {
+            inner: stream,
+            crypt,
+        }
     }
 
     pub async fn next(&mut self) -> Result<CommandResponse, VpnError> {
@@ -28,7 +34,20 @@ impl VpnClientProstReadStream {
         let mut buf = vec![0; len];
         self.inner.read_exact(&mut buf).await?;
 
-        let msg: CommandResponse = Message::decode(&buf[..])?;
+        // info!("before decrypt buf: {:?}", buf);
+        let Ok(buf) = self.crypt.as_ref().decrypt(&buf) else {
+            error!("decrypt error (maybe the crypt key is wrong)");
+            return Err(ServiceError::DecryptError.into());
+        };
+        // info!("after decrypt buf: {:?}", buf);
+
+        let msg: CommandResponse = match Message::decode(&buf[..]) {
+            Ok(msg) => msg,
+            Err(e) => {
+                error!("decode error (maybe the crypt key is wrong): {:?}", e);
+                return Err(e.into());
+            }
+        };
         Ok(msg)
     }
 

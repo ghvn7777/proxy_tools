@@ -40,6 +40,12 @@ pub enum ServiceError {
 
     #[error("Send tunnel msg err")]
     SendTunnelMsgError,
+
+    #[error("Decrypt error")]
+    DecryptError,
+
+    #[error("Encrypt error")]
+    EncryptError,
 }
 
 #[derive(Error, Debug)]

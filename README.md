@@ -13,6 +13,25 @@ sudo apt install protobuf-compiler
 cargo build --release
 ```
 
+## How to Usage
+generate chacha20 encryption file:
+```
+cargo run --example gen_pass
+```
+copy output to vpn/fixtures/chacha20.txt (no new line for end)
+
+server:
+```
+cd target/release
+./server --crypt-file ../../vpn/fixtures/chacha20.txt  --port 9527
+```
+
+client:
+```
+cd target/release
+./client --crypt-file ../../vpn/fixtures/chacha20.txt --server-url 127.0.0.1:9527 --tunnel-cnt 10 no-auth
+```
+
 ## Test
 ```
 sudo apt install netcat

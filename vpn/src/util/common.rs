@@ -1,39 +1,20 @@
-use std::vec::Vec;
+use std::fs::File;
+use std::io::Read;
 
-use futures::channel::mpsc::{self, Receiver, Sender};
-use futures::stream::SelectAll;
+use anyhow::Result;
 
-pub type Receivers<T> = SelectAll<Receiver<T>>;
-pub type MainSender<T> = Sender<T>;
-pub struct SubSenders<T>(Vec<Sender<T>>, usize);
-
-pub fn channel_bus<T>(
-    bus_num: usize,
-    buffer: usize,
-) -> (MainSender<T>, SubSenders<T>, Receivers<T>) {
-    let (main_sender, main_receiver) = mpsc::channel(buffer);
-    let mut receivers = Receivers::new();
-    let mut sub_senders = SubSenders(Vec::new(), 0);
-
-    receivers.push(main_receiver);
-    for _ in 0..bus_num {
-        let (sender, receiver) = mpsc::channel(buffer);
-        sub_senders.0.push(sender);
-        receivers.push(receiver);
-    }
-
-    (main_sender, sub_senders, receivers)
+pub fn get_reader(input: &str) -> Result<Box<dyn Read>> {
+    let reader: Box<dyn Read> = if input == "-" {
+        Box::new(std::io::stdin())
+    } else {
+        Box::new(File::open(input)?)
+    };
+    Ok(reader)
 }
 
-impl<T> SubSenders<T> {
-    pub fn get_one_sender(&mut self) -> Sender<T> {
-        let index = self.1;
-        self.1 += 1;
-
-        if self.1 >= self.0.len() {
-            self.1 = 0;
-        }
-
-        self.0.get(index).unwrap().clone()
-    }
+pub fn get_content(input: &str) -> Result<Vec<u8>> {
+    let mut reader = get_reader(input)?;
+    let mut buf = Vec::new();
+    reader.read_to_end(&mut buf)?;
+    Ok(buf)
 }
