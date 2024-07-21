@@ -126,7 +126,7 @@ async fn read_remote_tcp(
             }
 
             Err(_) => {
-                error!("Server Tcp Stream read error");
+                warn!("Server Tcp Stream read error");
                 break;
             }
         }
