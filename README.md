@@ -1,6 +1,8 @@
 # Proxy Tools
 
-Browser SiwthyOmega -> [Local SocksServer -> LocalClient] -> Server -> Remote
+Socks5 proxy tool, support Tcp / Udp proxy with auth or auth-free
+
+Socks Request -- [Local SocksServer -- LocalClient] -- Server -- Remote
 
 
 ## Dependencies
@@ -13,7 +15,7 @@ sudo apt install protobuf-compiler
 cargo build --release
 ```
 
-## How to Usage
+## Usage
 generate chacha20 encryption file:
 ```
 cargo run --example gen_pass
@@ -29,30 +31,48 @@ cd target/release
 client:
 ```
 cd target/release
-./client --crypt-file ../../vpn/fixtures/chacha20.txt --server-url 127.0.0.1:9527 --tunnel-cnt 10 --port 9020 no-auth
+./client\
+    --crypt-file ../../vpn/fixtures/chacha20.txt\
+    --server-url 127.0.0.1:9527\
+    --tunnel-cnt 10\
+    --port 9020\
+     no-auth
 ```
 
-## Test
+## Debug Test
 ```
 sudo apt install netcat
 ```
 
 ### Tcp test
-为了方便，我们展示怎么在本地测试
+start proxy server on local:
 ```
-./server  # 在本地启动 server
-./client --server-url 127.0.0.1：9527 --tunnel-cnt 1 no-auth # 新建窗口启动 client
-nc -l 1234 # 以 TCP 模式监听端口 1237
-nc -X 5 -x 127.0.0.1:9020 127.0.0.1 1234 # 用 socsk5 协议，走本地 9020 端口请求 1234 端口数据
-```
-然后在两个 `nc` 窗口发送消息如果代理正常就能在另外一个窗口看到，可以先不走代理确认下命令可用
-```
-nc -l 1234
-nc 127.0.0.1 1234
+./server --port 9527
 ```
 
+start proxy client on local:
+```
+./client --server-url 127.0.0.1:9527 --tunnel-cnt 1 no-auth
+```
+
+start tcp server use netcat
+```
+nc -l 1234
+```
+
+test tcp connect proxy socks5
+```
+nc -X 5 -x 127.0.0.1:9020 127.0.0.1 1234
+```
+
+Sending a message from one terminal in TCP server or client, and another terminal can receive it normally.
+
+
 ### Udp test
-注意脚本里面是对 `8.8.8.8:53` 进行测试，在国内环境有时候会失败是正常现象，服务器在国外基本上都能成功
+Attempting to request via UDP protocol to 8.8.8.8:53.
+
+noted: This script may fail to run in China, but it should work fine on servers located in other countries.
+
 ```python
 python3 test_udp_proxy.py  --proxy 127.0.0.1 --port 9020
 ```
