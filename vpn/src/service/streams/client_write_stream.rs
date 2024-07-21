@@ -10,17 +10,17 @@ use tokio::{io::AsyncWriteExt, net::tcp::OwnedWriteHalf};
 use tracing::{debug, error, info, trace, warn};
 
 use crate::{
-    pb::CommandRequest, ClientMsg, ClientPortMap, ClientToSocks5Msg, ServiceError,
-    Socks5ToClientMsg, SocksMsg, TextCrypt, VpnError, ALIVE_TIMEOUT_TIME_MS,
+    pb::CommandRequest, ClientMsg, ClientPortMap, ClientToSocks5Msg, DataCrypt, ServiceError,
+    Socks5ToClientMsg, SocksMsg, VpnError, ALIVE_TIMEOUT_TIME_MS,
 };
 
 pub struct VpnClientProstWriteStream {
     inner: OwnedWriteHalf,
-    crypt: Arc<Box<dyn TextCrypt>>,
+    crypt: Arc<Box<dyn DataCrypt>>,
 }
 
 impl VpnClientProstWriteStream {
-    pub fn new(stream: OwnedWriteHalf, crypt: Arc<Box<dyn TextCrypt>>) -> Self {
+    pub fn new(stream: OwnedWriteHalf, crypt: Arc<Box<dyn DataCrypt>>) -> Self {
         Self {
             inner: stream,
             crypt,

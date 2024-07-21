@@ -9,16 +9,16 @@ use tracing::{debug, error, info, warn};
 use crate::{
     pb::{command_request::Command, CommandRequest},
     util::TargetAddr,
-    ServerMsg, ServerToRemote, ServiceError, TextCrypt, VpnError,
+    DataCrypt, ServerMsg, ServerToRemote, ServiceError, VpnError,
 };
 
 pub struct VpnServerProstReadStream {
     pub inner: OwnedReadHalf,
-    pub crypt: Arc<Box<dyn TextCrypt>>,
+    pub crypt: Arc<Box<dyn DataCrypt>>,
 }
 
 impl VpnServerProstReadStream {
-    pub fn new(stream: OwnedReadHalf, crypt: Arc<Box<dyn TextCrypt>>) -> Self {
+    pub fn new(stream: OwnedReadHalf, crypt: Arc<Box<dyn DataCrypt>>) -> Self {
         Self {
             inner: stream,
             crypt,

@@ -4,9 +4,9 @@ use anyhow::Result;
 use tokio::net::TcpStream;
 use tracing::info;
 
-use crate::{util::channel_bus, ServerMsg, TextCrypt, VpnServerStreamGenerator};
+use crate::{util::channel_bus, DataCrypt, ServerMsg, VpnServerStreamGenerator};
 
-pub async fn run_tcp_server(stream: TcpStream, crypt: Arc<Box<dyn TextCrypt>>) -> Result<()> {
+pub async fn run_tcp_server(stream: TcpStream, crypt: Arc<Box<dyn DataCrypt>>) -> Result<()> {
     let (main_sender, sub_senders, receivers) = channel_bus::<ServerMsg>(10, 1000);
 
     let (mut reader, mut writer) = VpnServerStreamGenerator::generate(stream, crypt);

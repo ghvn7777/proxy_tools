@@ -13,7 +13,7 @@ use tracing::info;
 
 use crate::util::get_content;
 
-pub trait TextCrypt: Sync + Send + 'static {
+pub trait DataCrypt: Sync + Send + 'static {
     /// Encrypt the data from the reader and return the ciphertext
     fn encrypt(&self, buf: &[u8]) -> Result<Vec<u8>>;
 
@@ -21,15 +21,15 @@ pub trait TextCrypt: Sync + Send + 'static {
     fn decrypt(&self, buf: &[u8]) -> Result<Vec<u8>>;
 }
 
-pub fn get_crypt(file_path: &Option<String>) -> Result<Arc<Box<dyn TextCrypt>>> {
+pub fn get_crypt(file_path: &Option<String>) -> Result<Arc<Box<dyn DataCrypt>>> {
     let crypt = if file_path.is_some() {
         let key = file_path.as_ref().unwrap();
         let key = get_content(key)?;
-        let crypt: Box<dyn TextCrypt> = Box::new(EncryptChaCha20::try_new(key)?);
+        let crypt: Box<dyn DataCrypt> = Box::new(EncryptChaCha20::try_new(key)?);
         info!("Using chacha20 crypt");
         crypt
     } else {
-        let crypt: Box<dyn TextCrypt> = Box::new(Nothing);
+        let crypt: Box<dyn DataCrypt> = Box::new(Nothing);
         info!("Nothing crypt");
         crypt
     };

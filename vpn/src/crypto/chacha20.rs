@@ -7,14 +7,14 @@ use chacha20poly1305::{
     ChaCha20Poly1305, Nonce,
 };
 
-use crate::{process_genpass, TextCrypt};
+use crate::{process_genpass, DataCrypt};
 
 pub struct EncryptChaCha20 {
     key: [u8; 32],
     nonce: [u8; 12],
 }
 
-impl TextCrypt for EncryptChaCha20 {
+impl DataCrypt for EncryptChaCha20 {
     fn encrypt(&self, buf: &[u8]) -> Result<Vec<u8>> {
         let cipher = ChaCha20Poly1305::new_from_slice(&self.key)
             .map_err(|_| anyhow::anyhow!("Failed to create ChaChaPoly1305 instance"))?;

@@ -12,14 +12,14 @@ use server_write_stream::VpnServerProstWriteStream;
 
 use tokio::net::TcpStream;
 
-use crate::TextCrypt;
+use crate::DataCrypt;
 
 pub struct VpnClientStreamGenerator;
 
 impl VpnClientStreamGenerator {
     pub fn generate(
         stream: TcpStream,
-        crypt: Arc<Box<dyn TextCrypt>>,
+        crypt: Arc<Box<dyn DataCrypt>>,
     ) -> (VpnClientProstReadStream, VpnClientProstWriteStream) {
         let (r, w) = stream.into_split();
         let read_stream = VpnClientProstReadStream::new(r, crypt.clone());
@@ -33,7 +33,7 @@ pub struct VpnServerStreamGenerator;
 impl VpnServerStreamGenerator {
     pub fn generate(
         stream: TcpStream,
-        crypt: Arc<Box<dyn TextCrypt>>,
+        crypt: Arc<Box<dyn DataCrypt>>,
     ) -> (VpnServerProstReadStream, VpnServerProstWriteStream) {
         let (r, w) = stream.into_split();
         let read_stream = VpnServerProstReadStream::new(r, crypt.clone());

@@ -12,9 +12,8 @@ use tokio_stream::StreamExt;
 use tracing::{debug, error, info, trace};
 
 use crate::{
-    interval, tcp_tunnel_port_task, udp_tunnel_port_task, RemoteMsg, RemoteToServer,
-    ServerToRemote, TextCrypt, TunnelReader, TunnelWriter, ALIVE_TIMEOUT_TIME_MS,
-    HEARTBEAT_INTERVAL_MS,
+    interval, tcp_tunnel_port_task, udp_tunnel_port_task, DataCrypt, RemoteMsg, RemoteToServer,
+    ServerToRemote, TunnelReader, TunnelWriter, ALIVE_TIMEOUT_TIME_MS, HEARTBEAT_INTERVAL_MS,
 };
 use crate::{pb::CommandResponse, util::SubSenders, ServerMsg, VpnError};
 
@@ -22,11 +21,11 @@ pub type Receivers<T> = SelectAll<Receiver<T>>;
 
 pub struct VpnServerProstWriteStream {
     inner: OwnedWriteHalf,
-    crypt: Arc<Box<dyn TextCrypt>>,
+    crypt: Arc<Box<dyn DataCrypt>>,
 }
 
 impl VpnServerProstWriteStream {
-    pub fn new(stream: OwnedWriteHalf, crypt: Arc<Box<dyn TextCrypt>>) -> Self {
+    pub fn new(stream: OwnedWriteHalf, crypt: Arc<Box<dyn DataCrypt>>) -> Self {
         Self {
             inner: stream,
             crypt,
