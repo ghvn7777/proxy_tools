@@ -5,53 +5,42 @@ use std::{
 };
 
 use futures::{SinkExt, Stream, StreamExt};
-use prost::Message;
-use quinn::SendStream;
 use tokio::io::AsyncWriteExt;
+use tonic::async_trait;
 use tracing::{debug, error, info, trace, warn};
 
 use crate::{
-    pb::CommandRequest, ClientMsg, ClientPortMap, ClientToSocks5Msg, DataCrypt, ServiceError,
-    Socks5ToClientMsg, SocksMsg, VpnError, ALIVE_TIMEOUT_TIME_MS,
+    pb::CommandRequest, ClientMsg, ClientPortMap, ClientToSocks5Msg, DataCrypt, ProstWriteStream,
+    ServiceError, Socks5ToClientMsg, SocksMsg, VpnError, WriteStream, ALIVE_TIMEOUT_TIME_MS,
 };
 
-pub struct QuicClientProstWriteStream {
-    inner: SendStream,
-    crypt: Arc<Box<dyn DataCrypt>>,
+use super::Processor;
+
+pub struct ClientWriteProcessor<'a, T, V> {
+    inner: ProstWriteStream<CommandRequest, T>,
+    msg_stream: &'a mut V,
 }
 
-impl QuicClientProstWriteStream {
-    pub fn new(stream: SendStream, crypt: Arc<Box<dyn DataCrypt>>) -> Self {
+impl<'a, T, V> ClientWriteProcessor<'a, T, V> {
+    pub fn new(stream: T, crypt: Arc<Box<dyn DataCrypt>>, msg_stream: &'a mut V) -> Self {
         Self {
-            inner: stream,
-            crypt,
+            inner: ProstWriteStream::new(stream, crypt),
+            msg_stream,
         }
     }
+}
 
-    pub async fn send(&mut self, msg: &CommandRequest) -> Result<(), VpnError> {
-        let mut buf = Vec::new();
-        msg.encode(&mut buf)?;
-
-        debug!("before encrypt buf len: {:?}", buf.len());
-        let buf = self.crypt.encrypt(&buf)?;
-        debug!("after encrypt buf len: {:?}", buf.len());
-
-        // info!("send msg len: {}", buf.len());
-        self.inner.write_i32(buf.len() as i32).await?;
-        self.inner.write_all(&buf).await?;
-        self.inner.flush().await?;
-
-        Ok(())
-    }
-
-    pub async fn process<T>(&mut self, mut msg_stream: T) -> Result<(), VpnError>
-    where
-        T: Stream<Item = ClientMsg> + Unpin,
-    {
+#[async_trait]
+impl<'a, T, V> Processor for ClientWriteProcessor<'a, T, V>
+where
+    T: AsyncWriteExt + Unpin + Send + Sync + 'static,
+    V: Stream<Item = ClientMsg> + Unpin + Send + Sync + 'static,
+{
+    async fn process(&mut self) -> Result<(), VpnError> {
         let mut port_map = HashMap::new();
         let mut alive_time = Instant::now();
         loop {
-            match msg_stream.next().await {
+            match self.msg_stream.next().await {
                 Some(msg) => match msg {
                     ClientMsg::Heartbeat => {
                         // info!("Client Msg receive heartbeat");
@@ -62,7 +51,7 @@ impl QuicClientProstWriteStream {
                             break;
                         }
                         let msg = CommandRequest::new_heartbeat();
-                        self.send(&msg).await?;
+                        self.inner.send(&msg).await?;
                     }
                     ClientMsg::Socks5ToClient(msg) => {
                         alive_time = Instant::now();
@@ -82,7 +71,13 @@ impl QuicClientProstWriteStream {
 
         Ok(())
     }
+}
 
+impl<'a, T, V> ClientWriteProcessor<'a, T, V>
+where
+    T: AsyncWriteExt + Unpin + Send + Sync + 'static,
+    V: Stream<Item = ClientMsg> + Unpin,
+{
     pub async fn process_socks5_to_client(
         &mut self,
         msg: Socks5ToClientMsg,
@@ -104,22 +99,22 @@ impl QuicClientProstWriteStream {
                     warn!("process_socks5_to_client: Port id not found: {}", id);
                 }
                 let msg = CommandRequest::new_close_port(id);
-                self.send(&msg).await?;
+                self.inner.send(&msg).await?;
             }
             Socks5ToClientMsg::TcpConnect(id, addr) => {
                 debug!("process_socks5_to_client: TcpConnect: {} -- {:?}", id, addr);
                 let msg = CommandRequest::new_tcp_connect(id, addr);
-                self.send(&msg).await?;
+                self.inner.send(&msg).await?;
             }
             Socks5ToClientMsg::UdpAssociate(id) => {
                 debug!("process_socks5_to_client: UdpAssociate: {}", id);
                 let msg = CommandRequest::new_associate_connect(id);
-                self.send(&msg).await?;
+                self.inner.send(&msg).await?;
             }
             Socks5ToClientMsg::Data(id, data) => {
                 info!("process_socks5_to_client data: {}, {:?}", id, data);
                 let msg = CommandRequest::new_data(id, *data);
-                self.send(&msg).await?;
+                self.inner.send(&msg).await?;
             }
             Socks5ToClientMsg::UdpData(id, target_addr, data) => {
                 // info!(
@@ -127,7 +122,7 @@ impl QuicClientProstWriteStream {
                 //     id, target_addr, data
                 // );
                 let msg = CommandRequest::new_udp_data(id, target_addr, *data);
-                self.send(&msg).await?;
+                self.inner.send(&msg).await?;
             }
         }
         Ok(())

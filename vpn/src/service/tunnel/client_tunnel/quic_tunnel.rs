@@ -8,7 +8,8 @@ use tonic::transport::CertificateDer;
 use tracing::{error, info, trace};
 
 use crate::{
-    interval, util::channel_bus, ClientMsg, DataCrypt, QuicClientStreamGenerator, Tunnel, VpnError,
+    interval, util::channel_bus, ClientMsg, ClientQuicConn, ClientReadProcessor,
+    ClientWriteProcessor, DataCrypt, Processor, StreamSplit, Tunnel, VpnError,
     HEARTBEAT_INTERVAL_MS,
 };
 
@@ -46,7 +47,7 @@ impl QuicTunnel {
     }
 }
 
-async fn quic_tunnel_core_task<S: Stream<Item = ClientMsg> + Unpin>(
+async fn quic_tunnel_core_task<S: Stream<Item = ClientMsg> + Unpin + Send + Sync + 'static>(
     server_addr: String,
     msg_stream: &mut S,
     main_sender_tx: Sender<ClientMsg>,
@@ -68,21 +69,22 @@ async fn quic_tunnel_core_task<S: Stream<Item = ClientMsg> + Unpin>(
         .unwrap()
         .await
         .unwrap();
-    println!("[client] connected: addr={}", connection.remote_address());
+    info!("[client] connected: addr={}", connection.remote_address());
 
     // Split client to Server stream
-    let (mut read_stream, mut write_stream) =
-        QuicClientStreamGenerator::generate(connection, crypt).await?;
+    let (reader, writer) = ClientQuicConn::new(connection).stream_split().await;
+    let mut rader_processor = ClientReadProcessor::new(reader, crypt.clone(), main_sender_tx);
+    let mut writer_processor = ClientWriteProcessor::new(writer, crypt.clone(), msg_stream);
 
     let r = async {
-        match read_stream.process(main_sender_tx).await {
+        match rader_processor.process().await {
             Ok(_) => info!("Tcp tunnel core task read stream finished"),
             Err(e) => error!("Tcp tunnel core task read stream error: {:?}", e),
         }
     };
 
     let w = async {
-        match write_stream.process(msg_stream).await {
+        match writer_processor.process().await {
             Ok(_) => info!("Tcp tunnel core task write stream finished"),
             Err(e) => error!("Tcp tunnel core task write stream error: {:?}", e),
         }

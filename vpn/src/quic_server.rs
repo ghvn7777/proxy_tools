@@ -4,7 +4,8 @@ use anyhow::Result;
 use clap::Parser;
 use tracing::{error, info, level_filters::LevelFilter};
 use tracing_subscriber::{fmt::Layer, layer::SubscriberExt, util::SubscriberInitExt, Layer as _};
-use vpn::{get_crypt, server::run_quic_server, util::server_config::ServerConfig};
+use vpn::ServerQuicConn;
+use vpn::{get_crypt, server::run_server, util::server_config::ServerConfig};
 
 use vpn::util::make_server_endpoint;
 
@@ -17,7 +18,7 @@ async fn main() -> Result<()> {
 
     let addr = format!("0.0.0.0:{}", config.port);
     let (endpoint, _server_cert) = make_server_endpoint(addr.parse()?).unwrap();
-    println!("[server] listening on {}", addr);
+    info!("[server] listening on {}", addr);
 
     let crypt = get_crypt(&config.crypt_file)?;
 
@@ -36,7 +37,7 @@ async fn main() -> Result<()> {
         info!("[server] connection accepted: addr={}", remote_address);
 
         tokio::spawn(async move {
-            match run_quic_server(conn, crypt_clone).await {
+            match run_server(ServerQuicConn::new(conn), crypt_clone).await {
                 Ok(_) => {
                     info!("[server] {:?} end", remote_address);
                 }

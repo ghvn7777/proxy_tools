@@ -5,7 +5,7 @@ use clap::Parser;
 use tokio::net::TcpListener;
 use tracing::{info, level_filters::LevelFilter};
 use tracing_subscriber::{fmt::Layer, layer::SubscriberExt, util::SubscriberInitExt, Layer as _};
-use vpn::{get_crypt, server::run_tcp_server, util::server_config::ServerConfig};
+use vpn::{get_crypt, server::run_server, util::server_config::ServerConfig};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -25,7 +25,7 @@ async fn main() -> Result<()> {
         let (stream, addr) = listener.accept().await?;
         info!("Vpn server {:?} connected", addr);
         tokio::spawn(async move {
-            match run_tcp_server(stream, crypt_clone).await {
+            match run_server(stream, crypt_clone).await {
                 Ok(_) => {
                     info!("Vpn server {:?} end", addr);
                 }

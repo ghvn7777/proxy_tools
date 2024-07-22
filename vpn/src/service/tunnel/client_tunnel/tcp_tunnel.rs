@@ -6,8 +6,8 @@ use tokio_stream::StreamExt;
 use tracing::{error, info, trace};
 
 use crate::{
-    interval, util::channel_bus, ClientMsg, DataCrypt, ServiceError, TcpClientStreamGenerator,
-    Tunnel, VpnError, HEARTBEAT_INTERVAL_MS,
+    interval, util::channel_bus, ClientMsg, ClientReadProcessor, ClientWriteProcessor, DataCrypt,
+    Processor, ServiceError, StreamSplit, Tunnel, VpnError, HEARTBEAT_INTERVAL_MS,
 };
 
 pub struct TcpTunnel;
@@ -44,7 +44,7 @@ impl TcpTunnel {
     }
 }
 
-async fn tcp_tunnel_core_task<S: Stream<Item = ClientMsg> + Unpin>(
+async fn tcp_tunnel_core_task<S: Stream<Item = ClientMsg> + Send + Sync + Unpin + 'static>(
     server_addr: String,
     msg_stream: &mut S,
     main_sender_tx: Sender<ClientMsg>,
@@ -60,18 +60,19 @@ async fn tcp_tunnel_core_task<S: Stream<Item = ClientMsg> + Unpin>(
         }
     };
 
-    // Split client to Server stream
-    let (mut read_stream, mut write_stream) = TcpClientStreamGenerator::generate(stream, crypt);
+    let (reader, writer) = stream.stream_split().await;
+    let mut rader_processor = ClientReadProcessor::new(reader, crypt.clone(), main_sender_tx);
+    let mut writer_processor = ClientWriteProcessor::new(writer, crypt.clone(), msg_stream);
 
     let r = async {
-        match read_stream.process(main_sender_tx).await {
+        match rader_processor.process().await {
             Ok(_) => info!("Tcp tunnel core task read stream finished"),
             Err(e) => error!("Tcp tunnel core task read stream error: {:?}", e),
         }
     };
 
     let w = async {
-        match write_stream.process(msg_stream).await {
+        match writer_processor.process().await {
             Ok(_) => info!("Tcp tunnel core task write stream finished"),
             Err(e) => error!("Tcp tunnel core task write stream error: {:?}", e),
         }
