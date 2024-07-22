@@ -1,5 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
+use anyhow::Result;
 use futures::{channel::mpsc::Sender, Stream};
 use quinn::{crypto::rustls::QuicClientConfig, ClientConfig, Endpoint};
 use rustls::pki_types::{ServerName, UnixTime};
@@ -8,9 +9,8 @@ use tonic::transport::CertificateDer;
 use tracing::{error, info, trace};
 
 use crate::{
-    interval, util::channel_bus, ClientMsg, ClientQuicConn, ClientReadProcessor,
-    ClientWriteProcessor, DataCrypt, Processor, StreamSplit, Tunnel, VpnError,
-    HEARTBEAT_INTERVAL_MS,
+    interval, tunnel_client_core_task, util::channel_bus, ClientMsg, ClientQuicConn, DataCrypt,
+    Tunnel, VpnError, HEARTBEAT_INTERVAL_MS,
 };
 
 pub struct QuicTunnel;
@@ -27,9 +27,9 @@ impl QuicTunnel {
             loop {
                 match quic_tunnel_core_task(
                     server_addr.clone(),
+                    crypt.clone(),
                     &mut msg_stream,
                     main_sender_clone.clone(),
-                    crypt.clone(),
                 )
                 .await
                 {
@@ -47,13 +47,7 @@ impl QuicTunnel {
     }
 }
 
-async fn quic_tunnel_core_task<S: Stream<Item = ClientMsg> + Unpin + Send + Sync + 'static>(
-    server_addr: String,
-    msg_stream: &mut S,
-    main_sender_tx: Sender<ClientMsg>,
-    crypt: Arc<Box<dyn DataCrypt>>,
-) -> Result<(), VpnError> {
-    trace!("Tcp tunnel core task start");
+async fn get_quic_stream(server_addr: String) -> Result<ClientQuicConn, VpnError> {
     let mut endpoint = Endpoint::client("0.0.0.0:0".parse().unwrap())?;
 
     endpoint.set_default_client_config(ClientConfig::new(Arc::new(QuicClientConfig::try_from(
@@ -71,36 +65,22 @@ async fn quic_tunnel_core_task<S: Stream<Item = ClientMsg> + Unpin + Send + Sync
         .unwrap();
     info!("[client] connected: addr={}", connection.remote_address());
 
-    // Split client to Server stream
-    let (reader, writer) = ClientQuicConn::new(connection).stream_split().await;
-    let mut rader_processor = ClientReadProcessor::new(reader, crypt.clone(), main_sender_tx);
-    let mut writer_processor = ClientWriteProcessor::new(writer, crypt.clone(), msg_stream);
+    Ok(ClientQuicConn::new(connection))
+}
 
-    let r = async {
-        match rader_processor.process().await {
-            Ok(_) => info!("Tcp tunnel core task read stream finished"),
-            Err(e) => error!("Tcp tunnel core task read stream error: {:?}", e),
-        }
-    };
-
-    let w = async {
-        match writer_processor.process().await {
-            Ok(_) => info!("Tcp tunnel core task write stream finished"),
-            Err(e) => error!("Tcp tunnel core task write stream error: {:?}", e),
-        }
-    };
-
-    // join!(r, w);
-    tokio::select! {
-        _ = r => {
-            info!("Tcp tunnel core task read stream end");
-        }
-        _ = w => {
-            info!("Tcp tunnel core task write stream end");
-        }
-    };
-
-    info!("Tcp tunnel core task finished");
+async fn quic_tunnel_core_task<S>(
+    server_addr: String,
+    crypt: Arc<Box<dyn DataCrypt>>,
+    msg_stream: &mut S,
+    main_sender_tx: Sender<ClientMsg>,
+) -> Result<(), VpnError>
+where
+    S: Stream<Item = ClientMsg> + Unpin + Send + Sync + 'static,
+{
+    trace!("Tcp tunnel core task start");
+    let connection = get_quic_stream(server_addr).await?;
+    tunnel_client_core_task(connection, crypt, msg_stream, main_sender_tx).await?;
+    info!("tunnel core task finished");
 
     Ok(())
 }
