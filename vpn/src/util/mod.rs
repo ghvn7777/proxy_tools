@@ -6,5 +6,8 @@ pub mod stream_helper;
 mod target_addr;
 
 pub use channel_helper::{channel_bus, SubSenders};
-pub use common::{get_content, get_reader};
+pub use common::{get_content, get_reader, make_client_endpoint, make_server_endpoint};
 pub use target_addr::{read_address, TargetAddr, ToTargetAddr};
+
+#[allow(unused)]
+pub const ALPN_QUIC_HTTP: &[&[u8]] = &[b"hq-29"];

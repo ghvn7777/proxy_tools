@@ -1,10 +1,10 @@
 use anyhow::Result;
 
-use crate::TextCrypt;
+use crate::DataCrypt;
 
 pub struct Nothing;
 
-impl TextCrypt for Nothing {
+impl DataCrypt for Nothing {
     fn encrypt(&self, buf: &[u8]) -> Result<Vec<u8>> {
         Ok(buf.to_vec())
     }

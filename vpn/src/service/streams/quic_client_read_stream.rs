@@ -4,7 +4,8 @@ use anyhow::Result;
 
 use futures::{channel::mpsc::Sender, SinkExt};
 use prost::Message;
-use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
+use quinn::RecvStream;
+use tokio::io::AsyncReadExt;
 use tracing::{error, info, warn};
 
 use crate::{
@@ -16,13 +17,13 @@ use crate::{
     ClientMsg, ClientToSocks5Msg, DataCrypt, ServiceError, VpnError,
 };
 
-pub struct TcpClientProstReadStream {
-    pub inner: OwnedReadHalf,
+pub struct QuicClientProstReadStream {
+    pub inner: RecvStream,
     pub crypt: Arc<Box<dyn DataCrypt>>,
 }
 
-impl TcpClientProstReadStream {
-    pub fn new(stream: OwnedReadHalf, crypt: Arc<Box<dyn DataCrypt>>) -> Self {
+impl QuicClientProstReadStream {
+    pub fn new(stream: RecvStream, crypt: Arc<Box<dyn DataCrypt>>) -> Self {
         Self {
             inner: stream,
             crypt,

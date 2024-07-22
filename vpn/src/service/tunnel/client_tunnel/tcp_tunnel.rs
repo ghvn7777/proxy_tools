@@ -6,14 +6,14 @@ use tokio_stream::StreamExt;
 use tracing::{error, info, trace};
 
 use crate::{
-    interval, util::channel_bus, ClientMsg, ServiceError, TextCrypt, Tunnel,
-    VpnClientStreamGenerator, VpnError, HEARTBEAT_INTERVAL_MS,
+    interval, util::channel_bus, ClientMsg, DataCrypt, ServiceError, TcpClientStreamGenerator,
+    Tunnel, VpnError, HEARTBEAT_INTERVAL_MS,
 };
 
 pub struct TcpTunnel;
 
 impl TcpTunnel {
-    pub fn generate(server_addr: String, crypt: Arc<Box<dyn TextCrypt>>) -> Tunnel {
+    pub fn generate(server_addr: String, crypt: Arc<Box<dyn DataCrypt>>) -> Tunnel {
         let (main_sender, sub_senders, receivers) = channel_bus(10, 1000);
         let main_sender_clone = main_sender.clone();
 
@@ -48,7 +48,7 @@ async fn tcp_tunnel_core_task<S: Stream<Item = ClientMsg> + Unpin>(
     server_addr: String,
     msg_stream: &mut S,
     main_sender_tx: Sender<ClientMsg>,
-    crypt: Arc<Box<dyn TextCrypt>>,
+    crypt: Arc<Box<dyn DataCrypt>>,
 ) -> Result<(), VpnError> {
     trace!("Tcp tunnel core task start");
     let stream = match TcpStream::connect(&server_addr).await {
@@ -61,7 +61,7 @@ async fn tcp_tunnel_core_task<S: Stream<Item = ClientMsg> + Unpin>(
     };
 
     // Split client to Server stream
-    let (mut read_stream, mut write_stream) = VpnClientStreamGenerator::generate(stream, crypt);
+    let (mut read_stream, mut write_stream) = TcpClientStreamGenerator::generate(stream, crypt);
 
     let r = async {
         match read_stream.process(main_sender_tx).await {

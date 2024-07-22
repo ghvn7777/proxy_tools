@@ -3,7 +3,8 @@ use std::sync::Arc;
 use anyhow::Result;
 use futures::{channel::mpsc::Sender, SinkExt};
 use prost::Message;
-use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
+use quinn::RecvStream;
+use tokio::io::AsyncReadExt;
 use tracing::{debug, error, info, warn};
 
 use crate::{
@@ -12,13 +13,13 @@ use crate::{
     DataCrypt, ServerMsg, ServerToRemote, ServiceError, VpnError,
 };
 
-pub struct TcpServerProstReadStream {
-    pub inner: OwnedReadHalf,
+pub struct QuicServerProstReadStream {
+    pub inner: RecvStream,
     pub crypt: Arc<Box<dyn DataCrypt>>,
 }
 
-impl TcpServerProstReadStream {
-    pub fn new(stream: OwnedReadHalf, crypt: Arc<Box<dyn DataCrypt>>) -> Self {
+impl QuicServerProstReadStream {
+    pub fn new(stream: RecvStream, crypt: Arc<Box<dyn DataCrypt>>) -> Self {
         Self {
             inner: stream,
             crypt,

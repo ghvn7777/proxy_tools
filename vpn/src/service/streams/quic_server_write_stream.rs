@@ -6,8 +6,8 @@ use futures::channel::mpsc::{channel, Receiver, Sender};
 use futures::stream::SelectAll;
 use futures::SinkExt;
 use prost::Message;
+use quinn::SendStream;
 use tokio::io::AsyncWriteExt;
-use tokio::net::tcp::OwnedWriteHalf;
 use tokio_stream::StreamExt;
 use tracing::{debug, error, info, trace};
 
@@ -19,13 +19,13 @@ use crate::{pb::CommandResponse, util::SubSenders, ServerMsg, VpnError};
 
 pub type Receivers<T> = SelectAll<Receiver<T>>;
 
-pub struct TcpServerProstWriteStream {
-    inner: OwnedWriteHalf,
+pub struct QuicServerProstWriteStream {
+    inner: SendStream,
     crypt: Arc<Box<dyn DataCrypt>>,
 }
 
-impl TcpServerProstWriteStream {
-    pub fn new(stream: OwnedWriteHalf, crypt: Arc<Box<dyn DataCrypt>>) -> Self {
+impl QuicServerProstWriteStream {
+    pub fn new(stream: SendStream, crypt: Arc<Box<dyn DataCrypt>>) -> Self {
         Self {
             inner: stream,
             crypt,
@@ -42,6 +42,7 @@ impl TcpServerProstWriteStream {
 
         self.inner.write_i32(buf.len() as i32).await?;
         self.inner.write_all(&buf).await?;
+        self.inner.flush().await?;
         Ok(())
     }
 

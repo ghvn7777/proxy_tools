@@ -6,7 +6,8 @@ use std::{
 
 use futures::{SinkExt, Stream, StreamExt};
 use prost::Message;
-use tokio::{io::AsyncWriteExt, net::tcp::OwnedWriteHalf};
+use quinn::SendStream;
+use tokio::io::AsyncWriteExt;
 use tracing::{debug, error, info, trace, warn};
 
 use crate::{
@@ -14,13 +15,13 @@ use crate::{
     Socks5ToClientMsg, SocksMsg, VpnError, ALIVE_TIMEOUT_TIME_MS,
 };
 
-pub struct TcpClientProstWriteStream {
-    inner: OwnedWriteHalf,
+pub struct QuicClientProstWriteStream {
+    inner: SendStream,
     crypt: Arc<Box<dyn DataCrypt>>,
 }
 
-impl TcpClientProstWriteStream {
-    pub fn new(stream: OwnedWriteHalf, crypt: Arc<Box<dyn DataCrypt>>) -> Self {
+impl QuicClientProstWriteStream {
+    pub fn new(stream: SendStream, crypt: Arc<Box<dyn DataCrypt>>) -> Self {
         Self {
             inner: stream,
             crypt,
@@ -38,6 +39,8 @@ impl TcpClientProstWriteStream {
         // info!("send msg len: {}", buf.len());
         self.inner.write_i32(buf.len() as i32).await?;
         self.inner.write_all(&buf).await?;
+        self.inner.flush().await?;
+
         Ok(())
     }
 

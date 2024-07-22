@@ -11,6 +11,15 @@ pub enum VpnError {
     #[error("Failed to encode protobuf message")]
     EncodeError(#[from] prost::EncodeError),
 
+    #[error("ReadExact error: {0}")]
+    ReadExactError(#[from] quinn::ReadExactError),
+
+    #[error("WriteAll error: {0}")]
+    WriteAllError(#[from] quinn::WriteError),
+
+    #[error("NoInitialCipherSuite error: {0}")]
+    NoInitialCipherSuite(#[from] quinn::crypto::rustls::NoInitialCipherSuite),
+
     #[error("Service error: {0}")]
     ServiceError(#[from] ServiceError),
 

@@ -1,3 +1,4 @@
+mod quic_tunnel;
 mod tcp_tunnel;
 
 use crate::{
@@ -8,6 +9,7 @@ use futures::{
     channel::mpsc::{channel, Sender},
     SinkExt,
 };
+pub use quic_tunnel::*;
 pub use tcp_tunnel::*;
 
 pub struct Tunnel {
