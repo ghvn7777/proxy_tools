@@ -9,8 +9,8 @@ use tonic::transport::CertificateDer;
 use tracing::{error, info, trace};
 
 use crate::{
-    interval, tunnel_client_core_task, util::channel_bus, ClientMsg, ClientQuicConn, DataCrypt,
-    Tunnel, VpnError, HEARTBEAT_INTERVAL_MS,
+    client::run_client, interval, util::channel_bus, ClientMsg, ClientQuicConn, DataCrypt, Tunnel,
+    VpnError, HEARTBEAT_INTERVAL_MS,
 };
 
 pub struct QuicTunnel;
@@ -79,7 +79,7 @@ where
 {
     trace!("Tcp tunnel core task start");
     let connection = get_quic_stream(server_addr).await?;
-    tunnel_client_core_task(connection, crypt, msg_stream, main_sender_tx).await?;
+    run_client(connection, crypt, msg_stream, main_sender_tx).await?;
     info!("tunnel core task finished");
 
     Ok(())

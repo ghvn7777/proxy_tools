@@ -15,10 +15,10 @@ use crate::util::get_content;
 
 pub trait DataCrypt: Sync + Send + 'static {
     /// Encrypt the data from the reader and return the ciphertext
-    fn encrypt(&self, buf: &[u8]) -> Result<Vec<u8>>;
+    fn encrypt(&self, buf: Vec<u8>) -> Result<Vec<u8>>;
 
     /// Decrypt the data from the reader and return the plaintext
-    fn decrypt(&self, buf: &[u8]) -> Result<Vec<u8>>;
+    fn decrypt(&self, buf: Vec<u8>) -> Result<Vec<u8>>;
 }
 
 pub fn get_crypt(file_path: &Option<String>) -> Result<Arc<Box<dyn DataCrypt>>> {

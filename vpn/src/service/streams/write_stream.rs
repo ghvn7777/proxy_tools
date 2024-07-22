@@ -37,7 +37,7 @@ where
         msg.encode(&mut buf)?;
 
         // info!("before encrypt buf len: {:?}", buf.len());
-        let buf = self.crypt.encrypt(&buf)?;
+        let buf = self.crypt.encrypt(buf)?;
         // info!("after encrypt buf len: {:?}", buf.len());
 
         self.inner.write_i32(buf.len() as i32).await?;

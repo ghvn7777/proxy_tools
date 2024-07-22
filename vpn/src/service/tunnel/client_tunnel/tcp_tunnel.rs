@@ -6,8 +6,8 @@ use tokio_stream::StreamExt;
 use tracing::{error, info, trace};
 
 use crate::{
-    interval, tunnel_client_core_task, util::channel_bus, ClientMsg, DataCrypt, ServiceError,
-    Tunnel, VpnError, HEARTBEAT_INTERVAL_MS,
+    client::run_client, interval, util::channel_bus, ClientMsg, DataCrypt, ServiceError, Tunnel,
+    VpnError, HEARTBEAT_INTERVAL_MS,
 };
 
 pub struct TcpTunnel;
@@ -60,7 +60,7 @@ async fn tcp_tunnel_core_task<S: Stream<Item = ClientMsg> + Send + Sync + Unpin 
         }
     };
 
-    tunnel_client_core_task(stream, crypt, msg_stream, main_sender_tx).await?;
+    run_client(stream, crypt, msg_stream, main_sender_tx).await?;
 
     info!("Tcp tunnel core task finished");
 

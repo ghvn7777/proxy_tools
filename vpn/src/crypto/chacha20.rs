@@ -15,24 +15,24 @@ pub struct EncryptChaCha20 {
 }
 
 impl DataCrypt for EncryptChaCha20 {
-    fn encrypt(&self, buf: &[u8]) -> Result<Vec<u8>> {
+    fn encrypt(&self, buf: Vec<u8>) -> Result<Vec<u8>> {
         let cipher = ChaCha20Poly1305::new_from_slice(&self.key)
             .map_err(|_| anyhow::anyhow!("Failed to create ChaChaPoly1305 instance"))?;
         let nonce = Nonce::from_slice(&self.nonce);
 
         let ciphertext = cipher
-            .encrypt(nonce, buf)
+            .encrypt(nonce, &buf[..])
             .map_err(|_| anyhow::anyhow!("Failed to encrypt data"))?;
         Ok(ciphertext)
     }
 
-    fn decrypt(&self, buf: &[u8]) -> Result<Vec<u8>> {
+    fn decrypt(&self, buf: Vec<u8>) -> Result<Vec<u8>> {
         let cipher = ChaCha20Poly1305::new_from_slice(&self.key)
             .map_err(|_| anyhow::anyhow!("Failed to create ChaChaPoly1305 instance"))?;
         let nonce = Nonce::from_slice(&self.nonce);
 
         let plaintext = cipher
-            .decrypt(nonce, buf)
+            .decrypt(nonce, &buf[..])
             .map_err(|_| anyhow::anyhow!("Failed to decrypt data"))?;
         Ok(plaintext)
     }

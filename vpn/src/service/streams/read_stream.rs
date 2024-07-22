@@ -39,7 +39,7 @@ where
         self.inner.read_exact(&mut buf).await?;
 
         // info!("before decrypt buf: {:?}", buf);
-        let Ok(buf) = self.crypt.as_ref().decrypt(&buf) else {
+        let Ok(buf) = self.crypt.as_ref().decrypt(buf) else {
             error!("decrypt error (maybe the crypt key is wrong)");
             return Err(ServiceError::DecryptError.into());
         };
