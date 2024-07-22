@@ -1,5 +1,6 @@
 pub mod client;
 mod intervals;
+mod processor;
 pub mod server;
 mod streams;
 mod tunnel;
@@ -9,6 +10,7 @@ use std::collections::HashMap;
 use futures::channel::mpsc::Sender;
 
 pub use intervals::interval;
+pub use processor::*;
 pub use streams::*;
 pub use tunnel::*;
 

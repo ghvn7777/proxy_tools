@@ -1,80 +1,86 @@
-mod client_read_stream;
-mod client_write_stream;
-mod quic_client_read_stream;
-mod quic_client_write_stream;
-mod quic_server_read_stream;
-mod quic_server_write_stream;
-mod server_read_stream;
-mod server_write_stream;
+mod read_stream;
+mod write_stream;
 
-use std::sync::Arc;
-
-use client_read_stream::TcpClientProstReadStream;
-use client_write_stream::TcpClientProstWriteStream;
-use quic_client_read_stream::QuicClientProstReadStream;
-use quic_client_write_stream::QuicClientProstWriteStream;
-use quic_server_read_stream::QuicServerProstReadStream;
-use quic_server_write_stream::QuicServerProstWriteStream;
-use quinn::Connection;
-use server_read_stream::TcpServerProstReadStream;
-use server_write_stream::TcpServerProstWriteStream;
+use quinn::{Connection, RecvStream, SendStream};
+pub use read_stream::ProstReadStream;
+use tokio::{
+    io::{AsyncReadExt, AsyncWrite},
+    net::{
+        tcp::{OwnedReadHalf, OwnedWriteHalf},
+        TcpStream,
+    },
+};
+pub use write_stream::ProstWriteStream;
 
 use anyhow::Result;
-use tokio::net::TcpStream;
+use tonic::async_trait;
 
-use crate::DataCrypt;
+use crate::VpnError;
 
-pub struct TcpClientStreamGenerator;
+/// server quic connection, use accept_bi to get recv and send stream
+pub struct ServerQuicConn(Connection);
+/// client quic connection, use open_bi to get recv and send stream
+pub struct ClientQuicConn(Connection);
 
-impl TcpClientStreamGenerator {
-    pub fn generate(
-        stream: TcpStream,
-        crypt: Arc<Box<dyn DataCrypt>>,
-    ) -> (TcpClientProstReadStream, TcpClientProstWriteStream) {
-        let (r, w) = stream.into_split();
-        let read_stream = TcpClientProstReadStream::new(r, crypt.clone());
-        let write_stream = TcpClientProstWriteStream::new(w, crypt.clone());
-        (read_stream, write_stream)
+#[async_trait]
+pub trait ReadStream<M>: Send + Sync + 'static {
+    async fn next(&mut self) -> Result<M, VpnError>;
+}
+
+#[async_trait]
+pub trait WriteStream<M>: Send + Sync + 'static {
+    async fn send(&mut self, msg: &M) -> Result<(), VpnError>;
+}
+
+#[async_trait]
+pub trait StreamSplit
+where
+    Self::ReadStream: AsyncReadExt + Unpin + Send + Sync + 'static,
+    Self::WriteStream: AsyncWrite + Unpin + Send + Sync + 'static,
+{
+    type ReadStream;
+    type WriteStream;
+
+    async fn stream_split(self) -> (Self::ReadStream, Self::WriteStream);
+}
+
+#[async_trait]
+impl StreamSplit for TcpStream {
+    type ReadStream = OwnedReadHalf;
+    type WriteStream = OwnedWriteHalf;
+    async fn stream_split(self) -> (Self::ReadStream, Self::WriteStream) {
+        self.into_split()
     }
 }
 
-pub struct TcpServerStreamGenerator;
-
-impl TcpServerStreamGenerator {
-    pub fn generate(
-        stream: TcpStream,
-        crypt: Arc<Box<dyn DataCrypt>>,
-    ) -> (TcpServerProstReadStream, TcpServerProstWriteStream) {
-        let (r, w) = stream.into_split();
-        let read_stream = TcpServerProstReadStream::new(r, crypt.clone());
-        let write_stream = TcpServerProstWriteStream::new(w, crypt.clone());
-        (read_stream, write_stream)
+#[async_trait]
+impl StreamSplit for ServerQuicConn {
+    type ReadStream = RecvStream;
+    type WriteStream = SendStream;
+    async fn stream_split(self) -> (Self::ReadStream, Self::WriteStream) {
+        let res = self.0.accept_bi().await.unwrap();
+        (res.1, res.0)
     }
 }
 
-pub struct QuicServerStreamGenerator;
-
-impl QuicServerStreamGenerator {
-    pub async fn generate(
-        conn: Connection,
-        crypt: Arc<Box<dyn DataCrypt>>,
-    ) -> Result<(QuicServerProstReadStream, QuicServerProstWriteStream)> {
-        let (send, recv) = conn.accept_bi().await?;
-        let read_stream = QuicServerProstReadStream::new(recv, crypt.clone());
-        let write_stream = QuicServerProstWriteStream::new(send, crypt.clone());
-        Ok((read_stream, write_stream))
+#[async_trait]
+impl StreamSplit for ClientQuicConn {
+    type ReadStream = RecvStream;
+    type WriteStream = SendStream;
+    async fn stream_split(self) -> (Self::ReadStream, Self::WriteStream) {
+        let res = self.0.open_bi().await.unwrap();
+        (res.1, res.0)
     }
 }
 
-pub struct QuicClientStreamGenerator;
-impl QuicClientStreamGenerator {
-    pub async fn generate(
-        conn: Connection,
-        crypt: Arc<Box<dyn DataCrypt>>,
-    ) -> Result<(QuicClientProstReadStream, QuicClientProstWriteStream)> {
-        let (send, recv) = conn.open_bi().await?;
-        let read_stream = QuicClientProstReadStream::new(recv, crypt.clone());
-        let write_stream = QuicClientProstWriteStream::new(send, crypt.clone());
-        Ok((read_stream, write_stream))
+impl ServerQuicConn {
+    pub fn new(conn: Connection) -> Self {
+        Self(conn)
+    }
+}
+
+impl ClientQuicConn {
+    pub fn new(conn: Connection) -> Self {
+        Self(conn)
     }
 }

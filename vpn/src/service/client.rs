@@ -1,39 +1,49 @@
 use std::sync::Arc;
 
-use tokio::net::TcpListener;
-use tracing::info;
+use crate::{
+    ClientMsg, ClientReadProcessor, ClientWriteProcessor, DataCrypt, Processor, StreamSplit,
+    VpnError,
+};
 
-use crate::{socks5::Socks5ServerStream, ClientConfig, Tunnel, VpnError};
+use futures::{channel::mpsc::Sender, Stream};
+use tracing::{error, info};
 
-pub async fn proxy_tunnels(
-    mut tunnels: Vec<Tunnel>,
-    config: Arc<ClientConfig>,
-) -> Result<(), VpnError> {
-    let socket_addr = format!("0.0.0.0:{}", config.port);
-    let listener = TcpListener::bind(socket_addr).await?;
-    info!("Socks5 server listening on {}", listener.local_addr()?);
+pub async fn run_client<S>(
+    stream: impl StreamSplit,
+    crypt: Arc<Box<dyn DataCrypt>>,
+    msg_stream: &mut S,
+    main_sender_tx: Sender<ClientMsg>,
+) -> Result<(), VpnError>
+where
+    S: Stream<Item = ClientMsg> + Unpin + Send + Sync + 'static,
+{
+    let (reader, writer) = stream.stream_split().await;
+    let mut rader_processor = ClientReadProcessor::new(reader, crypt.clone(), main_sender_tx);
+    let mut writer_processor = ClientWriteProcessor::new(writer, crypt.clone(), msg_stream);
 
-    let mut index = 0;
+    let r = async {
+        match rader_processor.process().await {
+            Ok(_) => info!("Tcp tunnel core task read stream finished"),
+            Err(e) => error!("Tcp tunnel core task read stream error: {:?}", e),
+        }
+    };
 
-    loop {
-        info!("In Socks server tid: {}", index);
-        let socks5_config = config.clone();
-        let (stream, addr) = listener.accept().await?;
-        info!("Socks5 client {:?} connected", addr);
+    let w = async {
+        match writer_processor.process().await {
+            Ok(_) => info!("Tcp tunnel core task write stream finished"),
+            Err(e) => error!("Tcp tunnel core task write stream error: {:?}", e),
+        }
+    };
 
-        // 这里如果获取不到 tunnel 说明代码逻辑有问题，直接 panic
-        let tunnel: &mut Tunnel = tunnels.get_mut(index).expect("Get tunnel failed");
-        let (write_port, read_port) = tunnel.generate().await?;
-        tokio::spawn(async move {
-            let stream = Socks5ServerStream::new(stream, socks5_config);
-            match stream.process(write_port, read_port).await {
-                Ok(_) => info!("Socks5 client {:?} end", addr),
-                Err(e) => info!("Socks5 client {:?} error: {:?}", addr, e),
-            };
+    // join!(r, w);
+    tokio::select! {
+        _ = r => {
+            info!("Tcp tunnel core task read stream end");
+        }
+        _ = w => {
+            info!("Tcp tunnel core task write stream end");
+        }
+    };
 
-            info!("Socks5 client {:?} disconnected", addr);
-        });
-
-        index = (index + 1) % tunnels.len();
-    }
+    Ok(())
 }

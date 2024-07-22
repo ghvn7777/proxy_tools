@@ -3,6 +3,34 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 ---
+## [0.5.2-support-quic](https://github.com/ghvn7777/proxy_tools/compare/v0.5.1..v0.5.2-support-quic) - 2024-07-22
+
+### Bug Fixes
+
+- client only connect local server bug - ([4644bcd](https://github.com/ghvn7777/proxy_tools/commit/4644bcdc70754145366560327a0e839db71774bc)) - Kaka
+
+### Features
+
+- add quic example - ([9017c70](https://github.com/ghvn7777/proxy_tools/commit/9017c70b2cbc04e031edb4eadd03afee84e54251)) - Kaka
+- support quic - ([b80a407](https://github.com/ghvn7777/proxy_tools/commit/b80a407bbbda58bc54331c8165e0b51f0b16bfc5)) - Kaka
+
+### Miscellaneous Chores
+
+- changelog - ([f09194f](https://github.com/ghvn7777/proxy_tools/commit/f09194fb70c5e8e954e8ee7767575217b29c7f78)) - Kaka
+- readme - ([b3e40b1](https://github.com/ghvn7777/proxy_tools/commit/b3e40b1ef8ed4437c30ea87b7f402a9ba653b957)) - Kaka
+- readme use english - ([cf8663b](https://github.com/ghvn7777/proxy_tools/commit/cf8663becdd50a5a6388fbe4a612b23efc6a20c9)) - Kaka
+- TextCrypt trait -> DataCrypt trait - ([86affce](https://github.com/ghvn7777/proxy_tools/commit/86affcee97e874ecc5bcf1f216deaffbe1310ecf)) - Kaka
+- log level - ([9f53b12](https://github.com/ghvn7777/proxy_tools/commit/9f53b12bfbc7a2491cf4c59981ead4b9761e0305)) - Kaka
+- rename some variable - ([d4767b3](https://github.com/ghvn7777/proxy_tools/commit/d4767b3dbba3629c4f3da67e63a75c82f32803fa)) - Kaka
+- version - ([9ed53b4](https://github.com/ghvn7777/proxy_tools/commit/9ed53b4ce98f8fd54e1b092279fb4a582fdb9eb2)) - Kaka
+
+### Refactoring
+
+- add ReadStream / WriteStream / Proceesor / StreamSplit trait and refactor code - ([ed8f742](https://github.com/ghvn7777/proxy_tools/commit/ed8f742f89a07e214aecacba2c17603b84afc5f7)) - Kaka
+- client tunnel code - ([0b0e9c3](https://github.com/ghvn7777/proxy_tools/commit/0b0e9c3849cc74f5cc50ba9eba9cd1a851cb9120)) - Kaka
+- quic tunnel and change Crypt trait - ([48da56b](https://github.com/ghvn7777/proxy_tools/commit/48da56bc1be2a371da5fd797014e1010cc40525a)) - Kaka
+
+---
 ## [0.5.1](https://github.com/ghvn7777/proxy_tools/compare/v0.5.0..v0.5.1) - 2024-07-20
 
 ### Features

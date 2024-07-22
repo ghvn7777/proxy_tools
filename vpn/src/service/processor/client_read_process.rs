@@ -3,9 +3,8 @@ use std::sync::Arc;
 use anyhow::Result;
 
 use futures::{channel::mpsc::Sender, SinkExt};
-use prost::Message;
-use quinn::RecvStream;
 use tokio::io::AsyncReadExt;
+use tonic::async_trait;
 use tracing::{error, info, warn};
 
 use crate::{
@@ -14,50 +13,37 @@ use crate::{
         CommandResponse, TcpConnectSuccess,
     },
     util::TargetAddr,
-    ClientMsg, ClientToSocks5Msg, DataCrypt, ServiceError, VpnError,
+    ClientMsg, ClientToSocks5Msg, DataCrypt, ProstReadStream, ReadStream, ServiceError, VpnError,
 };
 
-pub struct QuicClientProstReadStream {
-    pub inner: RecvStream,
-    pub crypt: Arc<Box<dyn DataCrypt>>,
+use super::Processor;
+
+pub struct ClientReadProcessor<T> {
+    pub inner: ProstReadStream<CommandResponse, T>,
+    sender: Sender<ClientMsg>,
 }
 
-impl QuicClientProstReadStream {
-    pub fn new(stream: RecvStream, crypt: Arc<Box<dyn DataCrypt>>) -> Self {
+impl<T> ClientReadProcessor<T> {
+    pub fn new(stream: T, crypt: Arc<Box<dyn DataCrypt>>, sender: Sender<ClientMsg>) -> Self {
         Self {
-            inner: stream,
-            crypt,
+            inner: ProstReadStream::new(stream, crypt),
+            sender,
         }
     }
+}
 
-    pub async fn next(&mut self) -> Result<CommandResponse, VpnError> {
-        let len = self.inner.read_i32().await? as usize;
-        let mut buf = vec![0; len];
-        self.inner.read_exact(&mut buf).await?;
-
-        // info!("before decrypt buf: {:?}", buf);
-        let Ok(buf) = self.crypt.as_ref().decrypt(&buf) else {
-            error!("decrypt error (maybe the crypt key is wrong)");
-            return Err(ServiceError::DecryptError.into());
-        };
-        // info!("after decrypt buf: {:?}", buf);
-
-        let msg: CommandResponse = match Message::decode(&buf[..]) {
-            Ok(msg) => msg,
-            Err(e) => {
-                error!("decode error (maybe the crypt key is wrong): {:?}", e);
-                return Err(e.into());
-            }
-        };
-        Ok(msg)
-    }
-
-    pub async fn process(&mut self, mut sender: Sender<ClientMsg>) -> Result<(), VpnError> {
-        while let Ok(res) = self.next().await {
+#[async_trait]
+impl<T> Processor for ClientReadProcessor<T>
+where
+    T: AsyncReadExt + Unpin + Send + Sync + 'static,
+{
+    async fn process(&mut self) -> Result<(), VpnError> {
+        while let Ok(res) = self.inner.next().await {
             match res.response {
                 Some(Response::Heartbeat(_)) => {
                     // info!("Client read stream get heartbeat");
-                    if sender
+                    if self
+                        .sender
                         .send(ClientToSocks5Msg::Heartbeat.into())
                         .await
                         .is_err()
@@ -71,7 +57,8 @@ impl QuicClientProstReadStream {
                         data.id,
                         data.data.len()
                     );
-                    if sender
+                    if self
+                        .sender
                         .send(ClientToSocks5Msg::Data(data.id, Box::new(data.data)).into())
                         .await
                         .is_err()
@@ -90,7 +77,8 @@ impl QuicClientProstReadStream {
                         Some(udp_destination) => udp_destination.try_into().unwrap(),
                         None => {
                             error!("Udp data destination is none");
-                            if sender
+                            if self
+                                .sender
                                 .send(ClientToSocks5Msg::ClosePort(udp_data.id).into())
                                 .await
                                 .is_err()
@@ -101,7 +89,8 @@ impl QuicClientProstReadStream {
                         }
                     };
 
-                    if sender
+                    if self
+                        .sender
                         .send(
                             ClientToSocks5Msg::UdpData(
                                 udp_data.id,
@@ -118,7 +107,8 @@ impl QuicClientProstReadStream {
                 }
                 Some(Response::ClosePort(port)) => {
                     info!("Client read stream get close port, id: {}", port);
-                    if sender
+                    if self
+                        .sender
                         .send(ClientToSocks5Msg::ClosePort(port).into())
                         .await
                         .is_err()
@@ -134,7 +124,8 @@ impl QuicClientProstReadStream {
                     match bind_addr {
                         Some(bind_addr) => {
                             let bind_addr: TargetAddr = bind_addr.try_into().unwrap();
-                            if sender
+                            if self
+                                .sender
                                 .send(ClientToSocks5Msg::TcpConnectSuccess(id, bind_addr).into())
                                 .await
                                 .is_err()
@@ -149,7 +140,8 @@ impl QuicClientProstReadStream {
                 }
                 Some(Response::TcpConnectFailed(id)) => {
                     info!("Client read stream get tcp connect failed, id: {}", id);
-                    if sender
+                    if self
+                        .sender
                         .send(ClientToSocks5Msg::TcpConnectFailed(id).into())
                         .await
                         .is_err()
@@ -159,7 +151,8 @@ impl QuicClientProstReadStream {
                 }
                 Some(Response::UdpAssociateSuccess(id)) => {
                     info!("Client read stream get udp associate success, id: {}", id);
-                    if sender
+                    if self
+                        .sender
                         .send(ClientToSocks5Msg::UdpAssociateSuccess(id).into())
                         .await
                         .is_err()
@@ -169,7 +162,8 @@ impl QuicClientProstReadStream {
                 }
                 Some(Response::UdpAssociateFailed(id)) => {
                     info!("Client read stream get udp associate failed, id: {}", id);
-                    if sender
+                    if self
+                        .sender
                         .send(ClientToSocks5Msg::UdpAssociateFailed(id).into())
                         .await
                         .is_err()

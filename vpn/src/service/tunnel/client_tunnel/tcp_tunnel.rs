@@ -6,8 +6,8 @@ use tokio_stream::StreamExt;
 use tracing::{error, info, trace};
 
 use crate::{
-    interval, util::channel_bus, ClientMsg, DataCrypt, ServiceError, TcpClientStreamGenerator,
-    Tunnel, VpnError, HEARTBEAT_INTERVAL_MS,
+    client::run_client, interval, util::channel_bus, ClientMsg, DataCrypt, ServiceError, Tunnel,
+    VpnError, HEARTBEAT_INTERVAL_MS,
 };
 
 pub struct TcpTunnel;
@@ -24,9 +24,9 @@ impl TcpTunnel {
             loop {
                 match tcp_tunnel_core_task(
                     server_addr.clone(),
+                    crypt.clone(),
                     &mut msg_stream,
                     main_sender_clone.clone(),
-                    crypt.clone(),
                 )
                 .await
                 {
@@ -44,11 +44,11 @@ impl TcpTunnel {
     }
 }
 
-async fn tcp_tunnel_core_task<S: Stream<Item = ClientMsg> + Unpin>(
+async fn tcp_tunnel_core_task<S: Stream<Item = ClientMsg> + Send + Sync + Unpin + 'static>(
     server_addr: String,
+    crypt: Arc<Box<dyn DataCrypt>>,
     msg_stream: &mut S,
     main_sender_tx: Sender<ClientMsg>,
-    crypt: Arc<Box<dyn DataCrypt>>,
 ) -> Result<(), VpnError> {
     trace!("Tcp tunnel core task start");
     let stream = match TcpStream::connect(&server_addr).await {
@@ -60,32 +60,7 @@ async fn tcp_tunnel_core_task<S: Stream<Item = ClientMsg> + Unpin>(
         }
     };
 
-    // Split client to Server stream
-    let (mut read_stream, mut write_stream) = TcpClientStreamGenerator::generate(stream, crypt);
-
-    let r = async {
-        match read_stream.process(main_sender_tx).await {
-            Ok(_) => info!("Tcp tunnel core task read stream finished"),
-            Err(e) => error!("Tcp tunnel core task read stream error: {:?}", e),
-        }
-    };
-
-    let w = async {
-        match write_stream.process(msg_stream).await {
-            Ok(_) => info!("Tcp tunnel core task write stream finished"),
-            Err(e) => error!("Tcp tunnel core task write stream error: {:?}", e),
-        }
-    };
-
-    // join!(r, w);
-    tokio::select! {
-        _ = r => {
-            info!("Tcp tunnel core task read stream end");
-        }
-        _ = w => {
-            info!("Tcp tunnel core task write stream end");
-        }
-    };
+    run_client(stream, crypt, msg_stream, main_sender_tx).await?;
 
     info!("Tcp tunnel core task finished");
 

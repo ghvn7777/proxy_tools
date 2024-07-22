@@ -2,57 +2,48 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use futures::{channel::mpsc::Sender, SinkExt};
-use prost::Message;
-use tokio::{io::AsyncReadExt, net::tcp::OwnedReadHalf};
+use tokio::io::AsyncReadExt;
+use tonic::async_trait;
 use tracing::{debug, error, info, warn};
 
 use crate::{
     pb::{command_request::Command, CommandRequest},
     util::TargetAddr,
-    DataCrypt, ServerMsg, ServerToRemote, ServiceError, VpnError,
+    DataCrypt, ProstReadStream, ReadStream, ServerMsg, ServerToRemote, VpnError,
 };
 
-pub struct TcpServerProstReadStream {
-    pub inner: OwnedReadHalf,
-    pub crypt: Arc<Box<dyn DataCrypt>>,
+use super::Processor;
+
+pub struct ServerReadProcessor<T> {
+    pub inner: ProstReadStream<CommandRequest, T>,
+    sender: Sender<ServerMsg>,
 }
 
-impl TcpServerProstReadStream {
-    pub fn new(stream: OwnedReadHalf, crypt: Arc<Box<dyn DataCrypt>>) -> Self {
+impl<T> ServerReadProcessor<T> {
+    pub fn new(stream: T, crypt: Arc<Box<dyn DataCrypt>>, sender: Sender<ServerMsg>) -> Self {
         Self {
-            inner: stream,
-            crypt,
+            inner: ProstReadStream::new(stream, crypt),
+            sender,
         }
     }
+}
 
-    pub async fn next(&mut self) -> Result<CommandRequest, VpnError> {
-        let len = self.inner.read_i32().await? as usize;
-        let mut buf = vec![0; len];
-        self.inner.read_exact(&mut buf).await?;
-
-        // info!("before decrypt buf: {:?}", buf);
-        let Ok(buf) = self.crypt.as_ref().decrypt(&buf) else {
-            error!("decrypt error (maybe the crypt key is wrong)");
-            return Err(ServiceError::DecryptError.into());
-        };
-        // info!("after decrypt buf: {:?}", buf);
-
-        let msg: CommandRequest = match Message::decode(&buf[..]) {
-            Ok(msg) => msg,
-            Err(e) => {
-                error!("decode error (maybe the crypt key is wrong): {:?}", e);
-                return Err(e.into());
-            }
-        };
-        Ok(msg)
-    }
-
-    pub async fn process(&mut self, mut sender: Sender<ServerMsg>) -> Result<(), VpnError> {
-        while let Ok(req) = self.next().await {
+#[async_trait]
+impl<T> Processor for ServerReadProcessor<T>
+where
+    T: AsyncReadExt + Unpin + Send + Sync + 'static,
+{
+    async fn process(&mut self) -> Result<(), VpnError> {
+        while let Ok(req) = self.inner.next().await {
             match req.command {
                 Some(Command::Heartbeat(_)) => {
                     // info!("server read stream get heartbeat");
-                    if sender.send(ServerToRemote::Heartbeat.into()).await.is_err() {
+                    if self
+                        .sender
+                        .send(ServerToRemote::Heartbeat.into())
+                        .await
+                        .is_err()
+                    {
                         error!("send heartbeat to remote failed");
                     }
                     continue;
@@ -66,7 +57,8 @@ impl TcpServerProstReadStream {
                         let target_addr: TargetAddr = target_addr.try_into().unwrap();
                         let id = tcp_connect.id;
                         info!("tcp connect: {}, {:?}", id, target_addr);
-                        if sender
+                        if self
+                            .sender
                             .send(ServerToRemote::TcpConnect(id, target_addr).into())
                             .await
                             .is_err()
@@ -77,7 +69,8 @@ impl TcpServerProstReadStream {
                 },
                 Some(Command::UdpAssociate(id)) => {
                     debug!("server read stream udp connect id: {}", id);
-                    if sender
+                    if self
+                        .sender
                         .send(ServerToRemote::UdpAssociate(id).into())
                         .await
                         .is_err()
@@ -99,7 +92,8 @@ impl TcpServerProstReadStream {
                             target_addr,
                             udp_data.data.len()
                         );
-                        if sender
+                        if self
+                            .sender
                             .send(
                                 ServerToRemote::UdpData(id, target_addr, Box::new(udp_data.data))
                                     .into(),
@@ -113,7 +107,8 @@ impl TcpServerProstReadStream {
                 },
                 Some(Command::ClosePort(id)) => {
                     debug!("stream reader close port id: {}", id);
-                    if sender
+                    if self
+                        .sender
                         .send(ServerToRemote::ClosePort(id).into())
                         .await
                         .is_err()
@@ -123,7 +118,8 @@ impl TcpServerProstReadStream {
                 }
                 Some(Command::Data(data)) => {
                     debug!("stream reader data len: {:?}", data.data.len());
-                    if sender
+                    if self
+                        .sender
                         .send(ServerToRemote::Data(data.id, Box::new(data.data)).into())
                         .await
                         .is_err()
