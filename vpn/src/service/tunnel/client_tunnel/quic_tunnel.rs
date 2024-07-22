@@ -53,7 +53,7 @@ async fn quic_tunnel_core_task<S: Stream<Item = ClientMsg> + Unpin>(
     crypt: Arc<Box<dyn DataCrypt>>,
 ) -> Result<(), VpnError> {
     trace!("Tcp tunnel core task start");
-    let mut endpoint = Endpoint::client("127.0.0.1:0".parse().unwrap())?;
+    let mut endpoint = Endpoint::client("0.0.0.0:0".parse().unwrap())?;
 
     endpoint.set_default_client_config(ClientConfig::new(Arc::new(QuicClientConfig::try_from(
         rustls::ClientConfig::builder()

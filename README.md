@@ -1,6 +1,6 @@
 # Proxy Tools
 
-Socks5 proxy tool, support Tcp / Udp proxy with auth or auth-free
+Socks5 proxy tool, support Tcp / Udp proxy with auth or auth-free, base on quic protocol
 
 Socks Request -- [Local SocksServer -- LocalClient] -- Server -- Remote
 
@@ -25,13 +25,13 @@ copy output to vpn/fixtures/chacha20.txt (no new line for end)
 server:
 ```
 cd target/release
-./server --crypt-file ../../vpn/fixtures/chacha20.txt  --port 9527
+./quic-server --crypt-file ../../vpn/fixtures/chacha20.txt  --port 9527
 ```
 
 client:
 ```
 cd target/release
-./client\
+./quic-client\
     --crypt-file ../../vpn/fixtures/chacha20.txt\
     --server-url 127.0.0.1:9527\
     --tunnel-cnt 10\
