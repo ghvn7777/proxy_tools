@@ -12,6 +12,14 @@ path = "src/server.rs"
 name = "client"
 path = "src/client.rs"
 
+[[bin]]
+name = "quic-server"
+path = "src/quic_server.rs"
+
+[[bin]]
+name = "quic-client"
+path = "src/quic_client.rs"
+
 [dependencies]
 anyhow = { workspace = true }
 async-std = { workspace = true }
