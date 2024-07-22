@@ -4,12 +4,12 @@ use anyhow::Result;
 use tokio::net::TcpStream;
 use tracing::info;
 
-use crate::{util::channel_bus, DataCrypt, ServerMsg, VpnServerStreamGenerator};
+use crate::{util::channel_bus, DataCrypt, ServerMsg, TcpServerStreamGenerator};
 
 pub async fn run_tcp_server(stream: TcpStream, crypt: Arc<Box<dyn DataCrypt>>) -> Result<()> {
     let (main_sender, sub_senders, receivers) = channel_bus::<ServerMsg>(10, 1000);
 
-    let (mut reader, mut writer) = VpnServerStreamGenerator::generate(stream, crypt);
+    let (mut reader, mut writer) = TcpServerStreamGenerator::generate(stream, crypt);
 
     let r = async move {
         match reader.process(main_sender).await {

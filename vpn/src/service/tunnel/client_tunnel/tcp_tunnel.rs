@@ -6,8 +6,8 @@ use tokio_stream::StreamExt;
 use tracing::{error, info, trace};
 
 use crate::{
-    interval, util::channel_bus, ClientMsg, DataCrypt, ServiceError, Tunnel,
-    VpnClientStreamGenerator, VpnError, HEARTBEAT_INTERVAL_MS,
+    interval, util::channel_bus, ClientMsg, DataCrypt, ServiceError, TcpClientStreamGenerator,
+    Tunnel, VpnError, HEARTBEAT_INTERVAL_MS,
 };
 
 pub struct TcpTunnel;
@@ -61,7 +61,7 @@ async fn tcp_tunnel_core_task<S: Stream<Item = ClientMsg> + Unpin>(
     };
 
     // Split client to Server stream
-    let (mut read_stream, mut write_stream) = VpnClientStreamGenerator::generate(stream, crypt);
+    let (mut read_stream, mut write_stream) = TcpClientStreamGenerator::generate(stream, crypt);
 
     let r = async {
         match read_stream.process(main_sender_tx).await {

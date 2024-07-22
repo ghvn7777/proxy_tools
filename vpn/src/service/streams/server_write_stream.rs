@@ -19,12 +19,12 @@ use crate::{pb::CommandResponse, util::SubSenders, ServerMsg, VpnError};
 
 pub type Receivers<T> = SelectAll<Receiver<T>>;
 
-pub struct VpnServerProstWriteStream {
+pub struct TcpServerProstWriteStream {
     inner: OwnedWriteHalf,
     crypt: Arc<Box<dyn DataCrypt>>,
 }
 
-impl VpnServerProstWriteStream {
+impl TcpServerProstWriteStream {
     pub fn new(stream: OwnedWriteHalf, crypt: Arc<Box<dyn DataCrypt>>) -> Self {
         Self {
             inner: stream,

@@ -53,7 +53,7 @@ async fn run_client(server_addr: SocketAddr) -> Result<(), Box<dyn Error + Send 
 
     // connect to server
     let connection = endpoint
-        .connect(server_addr, "localhost")
+        .connect(server_addr, "kaka")
         .unwrap()
         .await
         .unwrap();

@@ -14,12 +14,12 @@ use crate::{
     Socks5ToClientMsg, SocksMsg, VpnError, ALIVE_TIMEOUT_TIME_MS,
 };
 
-pub struct VpnClientProstWriteStream {
+pub struct TcpClientProstWriteStream {
     inner: OwnedWriteHalf,
     crypt: Arc<Box<dyn DataCrypt>>,
 }
 
-impl VpnClientProstWriteStream {
+impl TcpClientProstWriteStream {
     pub fn new(stream: OwnedWriteHalf, crypt: Arc<Box<dyn DataCrypt>>) -> Self {
         Self {
             inner: stream,

@@ -12,12 +12,12 @@ use crate::{
     DataCrypt, ServerMsg, ServerToRemote, ServiceError, VpnError,
 };
 
-pub struct VpnServerProstReadStream {
+pub struct TcpServerProstReadStream {
     pub inner: OwnedReadHalf,
     pub crypt: Arc<Box<dyn DataCrypt>>,
 }
 
-impl VpnServerProstReadStream {
+impl TcpServerProstReadStream {
     pub fn new(stream: OwnedReadHalf, crypt: Arc<Box<dyn DataCrypt>>) -> Self {
         Self {
             inner: stream,

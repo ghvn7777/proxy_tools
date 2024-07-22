@@ -16,12 +16,12 @@ use crate::{
     ClientMsg, ClientToSocks5Msg, DataCrypt, ServiceError, VpnError,
 };
 
-pub struct VpnClientProstReadStream {
+pub struct TcpClientProstReadStream {
     pub inner: OwnedReadHalf,
     pub crypt: Arc<Box<dyn DataCrypt>>,
 }
 
-impl VpnClientProstReadStream {
+impl TcpClientProstReadStream {
     pub fn new(stream: OwnedReadHalf, crypt: Arc<Box<dyn DataCrypt>>) -> Self {
         Self {
             inner: stream,
