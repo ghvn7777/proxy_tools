@@ -459,7 +459,7 @@ async fn tcp_connection_holder(running: &AtomicBool, mut stream: TcpStream) {
 }
 
 async fn tcp_proxy_socks_read(mut reader: OwnedReadHalf, write_port: &mut TunnelWriter<ClientMsg>) {
-    let mut buf = vec![0u8; 1024 * 4];
+    let mut buf = vec![0u8; 1024];
     let id = write_port.get_id();
     loop {
         match reader.read(&mut buf).await {
