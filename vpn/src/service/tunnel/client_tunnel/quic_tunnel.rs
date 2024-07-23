@@ -59,10 +59,9 @@ async fn get_quic_stream(server_addr: String) -> Result<ClientQuicConn, VpnError
 
     // connect to server
     let connection = endpoint
-        .connect(server_addr.parse().unwrap(), "kaka")
-        .unwrap()
-        .await
-        .unwrap();
+        .connect(server_addr.parse().unwrap(), "kaka")?
+        .await?;
+
     info!("[client] connected: addr={}", connection.remote_address());
 
     Ok(ClientQuicConn::new(connection))

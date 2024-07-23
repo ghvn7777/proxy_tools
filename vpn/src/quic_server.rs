@@ -1,7 +1,9 @@
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::Result;
 use clap::Parser;
+use tokio::time::sleep;
 use tracing::{error, info, level_filters::LevelFilter};
 use tracing_subscriber::{fmt::Layer, layer::SubscriberExt, util::SubscriberInitExt, Layer as _};
 use vpn::ServerQuicConn;
@@ -24,7 +26,11 @@ async fn main() -> Result<()> {
 
     loop {
         let crypt_clone = crypt.clone();
-        let incoming_conn = endpoint.accept().await.unwrap();
+        let Some(incoming_conn) = endpoint.accept().await else {
+            error!("Error accepting connection");
+            sleep(Duration::from_millis(6000)).await;
+            continue;
+        };
         let conn = match incoming_conn.await {
             Ok(conn) => conn,
             Err(e) => {
