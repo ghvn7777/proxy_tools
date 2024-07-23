@@ -34,7 +34,7 @@ async fn main() -> Result<()> {
         let conn = match incoming_conn.await {
             Ok(conn) => conn,
             Err(e) => {
-                error!("Error accepting connection: {:?}", e);
+                error!("Error incoming conn: {:?}", e);
                 continue;
             }
         };
