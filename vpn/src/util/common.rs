@@ -19,7 +19,7 @@ pub fn get_content(input: &str) -> Result<Vec<u8>> {
     Ok(buf)
 }
 
-use quinn::{ClientConfig, Endpoint, ServerConfig};
+use quinn::{ClientConfig, Endpoint, ServerConfig, VarInt};
 use rustls::pki_types::{CertificateDer, PrivatePkcs8KeyDer};
 
 use std::{error::Error, net::SocketAddr, sync::Arc};
@@ -82,7 +82,8 @@ fn configure_server(
     let mut server_config =
         ServerConfig::with_single_cert(vec![cert_der.clone()], priv_key.into())?;
     let transport_config = Arc::get_mut(&mut server_config.transport).unwrap();
-    transport_config.max_concurrent_uni_streams(0_u8.into());
+    // transport_config.max_concurrent_uni_streams(0_u8.into());
+    transport_config.stream_receive_window(VarInt::from_u32(12500 * 500));
 
     Ok((server_config, cert_der))
 }
