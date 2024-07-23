@@ -34,7 +34,7 @@ where
     M: Message + Default + Send + 'static,
 {
     async fn next(&mut self) -> Result<M, VpnError> {
-        let len = self.inner.read_i32().await? as usize;
+        let len = self.inner.read_u32().await? as usize;
         let mut buf = vec![0; len];
         self.inner.read_exact(&mut buf).await?;
 
