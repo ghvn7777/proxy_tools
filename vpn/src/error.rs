@@ -61,6 +61,21 @@ pub enum ServiceError {
 
     #[error("Encrypt error")]
     EncryptError,
+
+    #[error("Tls error: {0}")]
+    TlsError(String),
+
+    #[error("Start error: {0}")]
+    StartError(String),
+
+    #[error("Connect error: {0}")]
+    ConnectError(String),
+
+    #[error("Keep alive error: {0}")]
+    KeepAliveError(String),
+
+    #[error("Connect transform error: {0}")]
+    ConnectTransformError(String),
 }
 
 #[derive(Error, Debug)]
