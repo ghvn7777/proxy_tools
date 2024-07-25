@@ -148,17 +148,17 @@ impl Socks5ServerStream<TcpStream> {
         if success {
             debug!("socks5 tcp connect success");
             let (reader, writer) = stream.stream.into_split();
-            let r = tcp_proxy_socks_read(reader, &mut write_port);
+            let _r = tokio::spawn(tcp_proxy_socks_read(reader, write_port));
             let w = tcp_proxy_socks_write(writer, &mut read_port);
-            // join!(r, w);
-            tokio::select! {
-                _ = r => {
-                    info!("Socks5 proxy read end");
-                }
-                _ = w => {
-                    info!("Socks5 proxy write end");
-                }
-            };
+            join!(w);
+            // tokio::select! {
+            //     _ = r => {
+            //         info!("Socks5 proxy read end");
+            //     }
+            //     _ = w => {
+            //         info!("Socks5 proxy write end");
+            //     }
+            // };
             info!("Socks5 tcp proxy finished id: {}", read_port.get_id());
         }
 
@@ -458,7 +458,7 @@ async fn tcp_connection_holder(running: &AtomicBool, mut stream: TcpStream) {
     info!("Socks5 tcp connection holder end, running set false");
 }
 
-async fn tcp_proxy_socks_read(mut reader: OwnedReadHalf, write_port: &mut TunnelWriter<ClientMsg>) {
+async fn tcp_proxy_socks_read(mut reader: OwnedReadHalf, mut write_port: TunnelWriter<ClientMsg>) {
     let id = write_port.get_id();
     loop {
         let mut buf = vec![0u8; 1024 * 2];

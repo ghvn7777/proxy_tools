@@ -112,7 +112,11 @@ where
                 self.inner.send(&msg).await?;
             }
             Socks5ToClientMsg::Data(id, data) => {
-                info!("process_socks5_to_client data: {}, {:?}", id, data);
+                info!(
+                    "process_socks5_to_client data: id = {}, data_len = {:?}",
+                    id,
+                    data.len()
+                );
                 let msg = CommandRequest::new_data(id, *data);
                 self.inner.send(&msg).await?;
             }

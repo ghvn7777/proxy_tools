@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
+use futures::join;
 use tracing::info;
 
 use crate::{
@@ -15,7 +16,7 @@ pub async fn run_server(conn: impl StreamSplit, crypt: Arc<Box<dyn DataCrypt>>) 
     let mut write_process =
         ServerWriteProcessor::new(writer, crypt.clone(), sub_senders, receivers);
 
-    let r = async move {
+    let _r = tokio::spawn(async move {
         match reader_process.process().await {
             Ok(_) => {
                 info!("run_tcp_server reader end");
@@ -24,7 +25,7 @@ pub async fn run_server(conn: impl StreamSplit, crypt: Arc<Box<dyn DataCrypt>>) 
                 info!("run_tcp_server reader error: {:?}", e);
             }
         }
-    };
+    });
 
     let w = async {
         match write_process.process().await {
@@ -37,17 +38,17 @@ pub async fn run_server(conn: impl StreamSplit, crypt: Arc<Box<dyn DataCrypt>>) 
         }
     };
 
-    // // join!(r, w);
+    join!(w);
 
     // 与客户端心跳超时也会导致服务端断开连接，客户端应该要循环重连
-    tokio::select! {
-        _ = r => {
-            info!("run_tcp_server reader end");
-        }
-        _ = w => {
-            info!("run_tcp_server writer end");
-        }
-    }
+    // tokio::select! {
+    //     _ = r => {
+    //         info!("run_tcp_server reader end");
+    //     }
+    //     _ = w => {
+    //         info!("run_tcp_server writer end");
+    //     }
+    // }
 
     Ok(())
 }

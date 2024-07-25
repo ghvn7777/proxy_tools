@@ -5,7 +5,7 @@ use crate::{
     VpnError,
 };
 
-use futures::{channel::mpsc::Sender, Stream};
+use futures::{channel::mpsc::Sender, join, Stream};
 use tracing::{error, info};
 
 pub async fn run_client<S>(
@@ -21,12 +21,12 @@ where
     let mut rader_processor = ClientReadProcessor::new(reader, crypt.clone(), main_sender_tx);
     let mut writer_processor = ClientWriteProcessor::new(writer, crypt.clone(), msg_stream);
 
-    let r = async {
+    let _r = tokio::spawn(async move {
         match rader_processor.process().await {
             Ok(_) => info!("Tcp tunnel core task read stream finished"),
             Err(e) => error!("Tcp tunnel core task read stream error: {:?}", e),
         }
-    };
+    });
 
     let w = async {
         match writer_processor.process().await {
@@ -35,15 +35,15 @@ where
         }
     };
 
-    // join!(r, w);
-    tokio::select! {
-        _ = r => {
-            info!("Tcp tunnel core task read stream end");
-        }
-        _ = w => {
-            info!("Tcp tunnel core task write stream end");
-        }
-    };
+    join!(w);
+    // tokio::select! {
+    //     _ = r => {
+    //         info!("Tcp tunnel core task read stream end");
+    //     }
+    //     _ = w => {
+    //         info!("Tcp tunnel core task write stream end");
+    //     }
+    // };
 
     Ok(())
 }

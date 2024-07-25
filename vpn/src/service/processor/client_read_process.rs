@@ -53,7 +53,7 @@ where
                 }
                 Some(Response::Data(data)) => {
                     info!(
-                        "Client read stream get data, id: {}, {:?}",
+                        "Client read stream get data, id = {}, data_len = {:?}",
                         data.id,
                         data.data.len()
                     );
