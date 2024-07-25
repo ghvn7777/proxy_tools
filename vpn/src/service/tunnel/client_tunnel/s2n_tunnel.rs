@@ -3,6 +3,7 @@ use std::{net::SocketAddr, path::Path, sync::Arc, time::Duration};
 use anyhow::Result;
 use futures::{channel::mpsc::Sender, Stream};
 use s2n_quic::{client::Connect, Client};
+use tokio::time::sleep;
 use tokio_stream::StreamExt;
 use tracing::{error, info, trace};
 
@@ -32,7 +33,10 @@ impl S2nTunnel {
                 .await
                 {
                     Ok(_) => info!("S2n tunnel core task finished"),
-                    Err(e) => error!("S2n tunnel core task error: {:?}", e),
+                    Err(e) => {
+                        error!("S2n tunnel core task error: {:?}", e);
+                        sleep(Duration::from_millis(10000)).await;
+                    }
                 }
             }
         });

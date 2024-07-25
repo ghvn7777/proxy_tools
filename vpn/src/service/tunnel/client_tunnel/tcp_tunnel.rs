@@ -1,7 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 use futures::{channel::mpsc::Sender, Stream};
-use tokio::net::TcpStream;
+use tokio::{net::TcpStream, time::sleep};
 use tokio_stream::StreamExt;
 use tracing::{error, info, trace};
 
@@ -31,7 +31,10 @@ impl TcpTunnel {
                 .await
                 {
                     Ok(_) => info!("Tcp tunnel core task finished"),
-                    Err(e) => error!("Tcp tunnel core task error: {:?}", e),
+                    Err(e) => {
+                        error!("Tcp tunnel core task error: {:?}", e);
+                        sleep(Duration::from_millis(10000)).await;
+                    }
                 }
             }
         });

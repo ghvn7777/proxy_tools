@@ -4,6 +4,7 @@ use anyhow::Result;
 use futures::{channel::mpsc::Sender, Stream};
 use quinn::{crypto::rustls::QuicClientConfig, ClientConfig, Endpoint};
 use rustls::pki_types::{ServerName, UnixTime};
+use tokio::time::sleep;
 use tokio_stream::StreamExt;
 use tonic::transport::CertificateDer;
 use tracing::{error, info, trace};
@@ -34,7 +35,10 @@ impl QuicTunnel {
                 .await
                 {
                     Ok(_) => info!("Quic tunnel core task finished"),
-                    Err(e) => error!("Quic tunnel core task error: {:?}", e),
+                    Err(e) => {
+                        error!("Quic tunnel core task error: {:?}", e);
+                        sleep(Duration::from_millis(10000)).await;
+                    }
                 }
             }
         });
