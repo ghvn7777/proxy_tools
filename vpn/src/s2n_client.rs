@@ -10,7 +10,7 @@ use vpn::{get_crypt, socks5::proxy_socks, ClientConfig, S2nTunnel};
 async fn main() -> Result<()> {
     let config = Arc::new(ClientConfig::parse());
 
-    let layer = Layer::new().with_filter(LevelFilter::ERROR);
+    let layer = Layer::new().with_filter(LevelFilter::DEBUG);
     tracing_subscriber::registry().with(layer).init();
 
     let crypt = get_crypt(&config.crypt_file)?;

@@ -107,7 +107,7 @@ async fn read_remote_tcp(
     mut writer_tunnel: TunnelWriter<ServerMsg>,
 ) {
     loop {
-        let mut buf = vec![0u8; 1024 * 2];
+        let mut buf = vec![0u8; 1024 * 10];
         match stream.read(&mut buf).await {
             Ok(0) => {
                 info!("Tcp remote read 0");
@@ -241,7 +241,7 @@ async fn read_remote_udp(
 ) {
     let mut now = Instant::now();
     loop {
-        let mut buf = vec![0u8; 1024 * 2];
+        let mut buf = vec![0u8; 1024 * 10];
         if !running.load(Ordering::Relaxed) {
             break;
         }
