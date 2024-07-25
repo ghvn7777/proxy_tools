@@ -106,22 +106,12 @@ where
         match msg {
             ServerToRemote::Heartbeat => {
                 // info!("Server heartbeat");
-                if self
-                    .inner
-                    .send(&CommandResponse::new_heartbeat())
-                    .await
-                    .is_err()
-                {
-                    error!("Server send heartbeat failed");
-                }
+                self.send_response(CommandResponse::new_heartbeat()).await;
             }
             ServerToRemote::ClosePort(id) => {
                 info!("Server Close port id: {}", id);
-                if let Some(tx) = server_port_map.get_mut(&id) {
-                    if tx.send(RemoteMsg::ClosePort(id)).await.is_err() {
-                        info!("Server send close failed");
-                    }
-                }
+                let msg = RemoteMsg::ClosePort(id);
+                self.send_remote_msg(msg, server_port_map, id).await;
                 server_port_map.remove(&id);
             }
             ServerToRemote::TcpConnect(id, target_addr) => {
@@ -164,25 +154,13 @@ where
             }
             ServerToRemote::Data(id, data) => {
                 info!("Server get data: {:?}", data.len());
-                if let Some(tx) = server_port_map.get_mut(&id) {
-                    if tx.send(RemoteMsg::Data(data)).await.is_err() {
-                        info!("Server send data failed");
-                        server_port_map.remove(&id);
-                    }
-                }
+                let msg = RemoteMsg::Data(data);
+                self.send_remote_msg(msg, server_port_map, id).await;
             }
             ServerToRemote::UdpData(id, target_addr, data) => {
                 info!("Server get udp data: {:?}", data.len());
-                if let Some(tx) = server_port_map.get_mut(&id) {
-                    if tx
-                        .send(RemoteMsg::UdpData(target_addr, data))
-                        .await
-                        .is_err()
-                    {
-                        info!("Server send udp data failed");
-                        server_port_map.remove(&id);
-                    }
-                }
+                let msg = RemoteMsg::UdpData(target_addr, data);
+                self.send_remote_msg(msg, server_port_map, id).await;
             }
         }
     }
@@ -195,80 +173,64 @@ where
         match msg {
             RemoteToServer::TcpConnectSuccess(id, bind_addr) => {
                 debug!("Remote connect success id: {}", id);
-                if self
-                    .inner
-                    .send(&CommandResponse::new_tcp_connect_success(id, bind_addr))
-                    .await
-                    .is_err()
-                {
-                    error!("Server send tcp connect success failed");
-                    server_port_map.remove(&id);
-                }
+                self.send_response(CommandResponse::new_tcp_connect_success(id, bind_addr))
+                    .await;
             }
             RemoteToServer::TcpConnectFailed(id) => {
                 info!("Remote connect failed: {}", id);
-                if self
-                    .inner
-                    .send(&CommandResponse::new_tcp_connect_failed(id))
-                    .await
-                    .is_err()
-                {
-                    error!("Server send tcp connect failed failed");
-                    server_port_map.remove(&id);
-                }
+                self.send_response(CommandResponse::new_tcp_connect_failed(id))
+                    .await;
             }
             RemoteToServer::UdpAssociateSuccess(id) => {
                 debug!("Remote udp connect success: {}", id);
-                if self
-                    .inner
-                    .send(&CommandResponse::new_udp_associate_success(id))
-                    .await
-                    .is_err()
-                {
-                    error!("Server send udp connect success failed");
-                    server_port_map.remove(&id);
-                }
+                self.send_response(CommandResponse::new_udp_associate_success(id))
+                    .await;
             }
             RemoteToServer::UdpAssociateFailed(id) => {
                 info!("Remote udp connect failed: {}", id);
-                if self
-                    .inner
-                    .send(&CommandResponse::new_udp_associate_failed(id))
-                    .await
-                    .is_err()
-                {
-                    error!("Server send udp connect failed failed");
-                    server_port_map.remove(&id);
-                }
+                self.send_response(CommandResponse::new_udp_associate_failed(id))
+                    .await;
             }
             RemoteToServer::Data(id, data) => {
                 debug!("Remote get id: {}, data len: {:?}", id, data.len());
                 let msg = CommandResponse::new_data(id, *data);
-                if self.inner.send(&msg).await.is_err() {
-                    error!("Server send data failed");
-                    server_port_map.remove(&id);
-                }
+                self.send_response(msg).await;
             }
             RemoteToServer::UdpData(id, target_addr, data) => {
                 debug!("Remote get udp data: {}, {:?}", id, data.len());
                 let msg = CommandResponse::new_udp_data(id, target_addr, *data);
-                if self.inner.send(&msg).await.is_err() {
-                    error!("Server send udp data failed");
-                    server_port_map.remove(&id);
-                }
+                self.send_response(msg).await;
             }
             RemoteToServer::ClosePort(id) => {
                 info!("Remote close port: {}", id);
-                if self
-                    .inner
-                    .send(&CommandResponse::new_close_port(id))
-                    .await
-                    .is_err()
-                {
-                    error!("Server send close port failed");
-                    server_port_map.remove(&id);
-                }
+                self.send_response(CommandResponse::new_close_port(id))
+                    .await;
+                server_port_map.remove(&id);
             }
+        }
+    }
+
+    pub async fn send_response(&mut self, msg: CommandResponse) {
+        if let Err(e) = self.inner.send(&msg).await {
+            error!(
+                "[server response] send proto to client {:?} response error: {:?}",
+                msg, e
+            );
+        }
+    }
+
+    pub async fn send_remote_msg(
+        &mut self,
+        msg: RemoteMsg,
+        server_port_map: &mut HashMap<u32, Sender<RemoteMsg>>,
+        id: u32,
+    ) {
+        if let Some(tx) = server_port_map.get_mut(&id) {
+            if let Err(e) = tx.send(msg).await {
+                info!("[server remote] send msg to remote failed: {:?}", e);
+            }
+        } else {
+            info!("[server remote] send remote port id not found: {}", id);
         }
     }
 }

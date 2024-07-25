@@ -26,6 +26,12 @@ impl<T> ServerReadProcessor<T> {
             sender,
         }
     }
+
+    async fn send_client_msg<'a>(&mut self, msg: ServerToRemote) {
+        if let Err(e) = self.sender.send(msg.into()).await {
+            error!("[server read]send client msg to server failed: {:?}", e);
+        }
+    }
 }
 
 #[async_trait]
@@ -38,14 +44,7 @@ where
             match req.command {
                 Some(Command::Heartbeat(_)) => {
                     // info!("server read stream get heartbeat");
-                    if self
-                        .sender
-                        .send(ServerToRemote::Heartbeat.into())
-                        .await
-                        .is_err()
-                    {
-                        error!("send heartbeat to remote failed");
-                    }
+                    self.send_client_msg(ServerToRemote::Heartbeat).await;
                     continue;
                 }
                 Some(Command::TcpConnect(tcp_connect)) => match tcp_connect.destination {
@@ -57,26 +56,13 @@ where
                         let target_addr: TargetAddr = target_addr.try_into().unwrap();
                         let id = tcp_connect.id;
                         info!("tcp connect: {}, {:?}", id, target_addr);
-                        if self
-                            .sender
-                            .send(ServerToRemote::TcpConnect(id, target_addr).into())
-                            .await
-                            .is_err()
-                        {
-                            error!("send tcp connect to remote failed");
-                        }
+                        self.send_client_msg(ServerToRemote::TcpConnect(id, target_addr))
+                            .await;
                     }
                 },
                 Some(Command::UdpAssociate(id)) => {
                     debug!("server read stream udp connect id: {}", id);
-                    if self
-                        .sender
-                        .send(ServerToRemote::UdpAssociate(id).into())
-                        .await
-                        .is_err()
-                    {
-                        error!("send udp connect to remote failed");
-                    }
+                    self.send_client_msg(ServerToRemote::UdpAssociate(id)).await;
                 }
                 Some(Command::UdpData(udp_data)) => match udp_data.destination {
                     None => {
@@ -92,40 +78,22 @@ where
                             target_addr,
                             udp_data.data.len()
                         );
-                        if self
-                            .sender
-                            .send(
-                                ServerToRemote::UdpData(id, target_addr, Box::new(udp_data.data))
-                                    .into(),
-                            )
-                            .await
-                            .is_err()
-                        {
-                            error!("send udp data to remote failed");
-                        }
+                        self.send_client_msg(ServerToRemote::UdpData(
+                            id,
+                            target_addr,
+                            Box::new(udp_data.data),
+                        ))
+                        .await;
                     }
                 },
                 Some(Command::ClosePort(id)) => {
                     debug!("stream reader close port id: {}", id);
-                    if self
-                        .sender
-                        .send(ServerToRemote::ClosePort(id).into())
-                        .await
-                        .is_err()
-                    {
-                        error!("send close port to remote failed");
-                    }
+                    self.send_client_msg(ServerToRemote::ClosePort(id)).await;
                 }
                 Some(Command::Data(data)) => {
                     debug!("stream reader data len: {:?}", data.data.len());
-                    if self
-                        .sender
-                        .send(ServerToRemote::Data(data.id, Box::new(data.data)).into())
-                        .await
-                        .is_err()
-                    {
-                        error!("send data to remote failed");
-                    }
+                    self.send_client_msg(ServerToRemote::Data(data.id, Box::new(data.data)))
+                        .await;
                 }
                 None => {
                     warn!("stream reader get none");

@@ -30,6 +30,12 @@ impl<T> ClientReadProcessor<T> {
             sender,
         }
     }
+
+    pub async fn send_client_to_socks_msg(&mut self, msg: ClientToSocks5Msg) {
+        if let Err(e) = self.sender.send(msg.into()).await {
+            error!("[client read] send client msg to server failed: {:?}", e);
+        }
+    }
 }
 
 #[async_trait]
@@ -42,14 +48,8 @@ where
             match res.response {
                 Some(Response::Heartbeat(_)) => {
                     // info!("Client read stream get heartbeat");
-                    if self
-                        .sender
-                        .send(ClientToSocks5Msg::Heartbeat.into())
-                        .await
-                        .is_err()
-                    {
-                        warn!("Send heartbeat to socks5 failed");
-                    }
+                    self.send_client_to_socks_msg(ClientToSocks5Msg::Heartbeat)
+                        .await;
                 }
                 Some(Response::Data(data)) => {
                     info!(
@@ -57,14 +57,11 @@ where
                         data.id,
                         data.data.len()
                     );
-                    if self
-                        .sender
-                        .send(ClientToSocks5Msg::Data(data.id, Box::new(data.data)).into())
-                        .await
-                        .is_err()
-                    {
-                        warn!("Send data to socks5 failed");
-                    }
+                    self.send_client_to_socks_msg(ClientToSocks5Msg::Data(
+                        data.id,
+                        Box::new(data.data),
+                    ))
+                    .await;
                 }
                 Some(Response::UdpData(udp_data)) => {
                     info!(
@@ -77,44 +74,25 @@ where
                         Some(udp_destination) => udp_destination.try_into().unwrap(),
                         None => {
                             error!("Udp data destination is none");
-                            if self
-                                .sender
-                                .send(ClientToSocks5Msg::ClosePort(udp_data.id).into())
-                                .await
-                                .is_err()
-                            {
-                                warn!("Send close port to socks5 failed");
-                            }
+                            self.send_client_to_socks_msg(ClientToSocks5Msg::ClosePort(
+                                udp_data.id,
+                            ))
+                            .await;
                             continue;
                         }
                     };
 
-                    if self
-                        .sender
-                        .send(
-                            ClientToSocks5Msg::UdpData(
-                                udp_data.id,
-                                destination,
-                                Box::new(udp_data.data),
-                            )
-                            .into(),
-                        )
-                        .await
-                        .is_err()
-                    {
-                        warn!("Send udp data to socks5 failed");
-                    }
+                    self.send_client_to_socks_msg(ClientToSocks5Msg::UdpData(
+                        udp_data.id,
+                        destination,
+                        Box::new(udp_data.data),
+                    ))
+                    .await;
                 }
                 Some(Response::ClosePort(port)) => {
                     info!("Client read stream get close port, id: {}", port);
-                    if self
-                        .sender
-                        .send(ClientToSocks5Msg::ClosePort(port).into())
-                        .await
-                        .is_err()
-                    {
-                        warn!("Send close port to socks5 failed");
-                    }
+                    self.send_client_to_socks_msg(ClientToSocks5Msg::ClosePort(port))
+                        .await;
                 }
                 Some(Response::TcpConnectSuccess(TcpConnectSuccess { id, bind_addr })) => {
                     info!(
@@ -124,14 +102,10 @@ where
                     match bind_addr {
                         Some(bind_addr) => {
                             let bind_addr: TargetAddr = bind_addr.try_into().unwrap();
-                            if self
-                                .sender
-                                .send(ClientToSocks5Msg::TcpConnectSuccess(id, bind_addr).into())
-                                .await
-                                .is_err()
-                            {
-                                warn!("Send tcp connect success to socks5 failed");
-                            }
+                            self.send_client_to_socks_msg(ClientToSocks5Msg::TcpConnectSuccess(
+                                id, bind_addr,
+                            ))
+                            .await;
                         }
                         None => {
                             error!("Tcp connect success bind addr is none");
@@ -140,36 +114,18 @@ where
                 }
                 Some(Response::TcpConnectFailed(id)) => {
                     info!("Client read stream get tcp connect failed, id: {}", id);
-                    if self
-                        .sender
-                        .send(ClientToSocks5Msg::TcpConnectFailed(id).into())
-                        .await
-                        .is_err()
-                    {
-                        warn!("Send tcp connect failed to socks5 failed");
-                    }
+                    self.send_client_to_socks_msg(ClientToSocks5Msg::TcpConnectFailed(id))
+                        .await;
                 }
                 Some(Response::UdpAssociateSuccess(id)) => {
                     info!("Client read stream get udp associate success, id: {}", id);
-                    if self
-                        .sender
-                        .send(ClientToSocks5Msg::UdpAssociateSuccess(id).into())
-                        .await
-                        .is_err()
-                    {
-                        warn!("Send udp associate success to socks5 failed");
-                    }
+                    self.send_client_to_socks_msg(ClientToSocks5Msg::UdpAssociateSuccess(id))
+                        .await;
                 }
                 Some(Response::UdpAssociateFailed(id)) => {
                     info!("Client read stream get udp associate failed, id: {}", id);
-                    if self
-                        .sender
-                        .send(ClientToSocks5Msg::UdpAssociateFailed(id).into())
-                        .await
-                        .is_err()
-                    {
-                        warn!("Send udp associate failed to socks5 failed");
-                    }
+                    self.send_client_to_socks_msg(ClientToSocks5Msg::UdpAssociateFailed(id))
+                        .await;
                 }
                 None => {
                     warn!("Got an unknown response: {:?}", res);

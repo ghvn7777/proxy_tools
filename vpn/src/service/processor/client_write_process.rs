@@ -51,7 +51,7 @@ where
                             break;
                         }
                         let msg = CommandRequest::new_heartbeat();
-                        self.inner.send(&msg).await?;
+                        self.send_client_request_server(msg).await;
                     }
                     ClientMsg::Socks5ToClient(msg) => {
                         alive_time = Instant::now();
@@ -99,22 +99,22 @@ where
                     warn!("process_socks5_to_client: Port id not found: {}", id);
                 }
                 let msg = CommandRequest::new_close_port(id);
-                self.inner.send(&msg).await?;
+                self.send_client_request_server(msg).await;
             }
             Socks5ToClientMsg::TcpConnect(id, addr) => {
                 debug!("process_socks5_to_client: TcpConnect: {} -- {:?}", id, addr);
                 let msg = CommandRequest::new_tcp_connect(id, addr);
-                self.inner.send(&msg).await?;
+                self.send_client_request_server(msg).await;
             }
             Socks5ToClientMsg::UdpAssociate(id) => {
                 debug!("process_socks5_to_client: UdpAssociate: {}", id);
                 let msg = CommandRequest::new_associate_connect(id);
-                self.inner.send(&msg).await?;
+                self.send_client_request_server(msg).await;
             }
             Socks5ToClientMsg::Data(id, data) => {
                 info!("process_socks5_to_client data: {}, {:?}", id, data);
                 let msg = CommandRequest::new_data(id, *data);
-                self.inner.send(&msg).await?;
+                self.send_client_request_server(msg).await;
             }
             Socks5ToClientMsg::UdpData(id, target_addr, data) => {
                 // info!(
@@ -122,7 +122,7 @@ where
                 //     id, target_addr, data
                 // );
                 let msg = CommandRequest::new_udp_data(id, target_addr, *data);
-                self.inner.send(&msg).await?;
+                self.send_client_request_server(msg).await;
             }
         }
         Ok(())
@@ -141,14 +141,8 @@ where
             }
             ClientToSocks5Msg::Data(id, data) => {
                 // debug!("process_client_to_socks5 data: {}, {:?}", id, data);
-                if let Some(tx) = port_map.get_mut(&id) {
-                    if tx.send(SocksMsg::Data(data)).await.is_err() {
-                        error!("process_client_to_socks5: Send data failed");
-                        port_map.remove(&id);
-                    }
-                } else {
-                    warn!("process_client_to_socks5: Port id not found: {}", id);
-                }
+                self.send_client_to_socks5(SocksMsg::Data(data), port_map, id)
+                    .await;
             }
             ClientToSocks5Msg::UdpData(id, target_addr, data) => {
                 debug!(
@@ -156,76 +150,65 @@ where
                     id,
                     data.len()
                 );
-                if let Some(tx) = port_map.get_mut(&id) {
-                    if tx.send(SocksMsg::UdpData(target_addr, data)).await.is_err() {
-                        error!("process_client_to_socks5: Send udp data failed");
-                        port_map.remove(&id);
-                    }
-                } else {
-                    warn!("process_client_to_socks5: Port id not found: {}", id);
-                }
+                self.send_client_to_socks5(SocksMsg::UdpData(target_addr, data), port_map, id)
+                    .await;
             }
             ClientToSocks5Msg::ClosePort(id) => {
                 debug!("process_client_to_socks5: Close port: {}", id);
                 // 由服务端发过来的，要通知 socks5 关闭这个端口
-                if let Some(tx) = port_map.get_mut(&id) {
-                    if tx.send(SocksMsg::ClosePort(id)).await.is_err() {
-                        error!("process_client_to_socks5: Send data failed");
-                    }
-                } else {
-                    warn!("process_client_to_socks5: close port id not found: {}", id);
-                }
+                self.send_client_to_socks5(SocksMsg::ClosePort(id), port_map, id)
+                    .await;
                 port_map.remove(&id);
             }
             ClientToSocks5Msg::TcpConnectSuccess(id, bind_addr) => {
                 debug!("process_client_to_socks5: TcpConnectSuccess: {}", id);
-                if let Some(tx) = port_map.get_mut(&id) {
-                    if tx
-                        .send(SocksMsg::TcpConnectSuccess(id, bind_addr))
-                        .await
-                        .is_err()
-                    {
-                        error!("process_client_to_socks5: Send TcpConnectSuccess failed");
-                        port_map.remove(&id);
-                    }
-                } else {
-                    warn!("process_client_to_socks5: Port id not found: {}", id);
-                }
+                self.send_client_to_socks5(
+                    SocksMsg::TcpConnectSuccess(id, bind_addr),
+                    port_map,
+                    id,
+                )
+                .await;
             }
             ClientToSocks5Msg::TcpConnectFailed(id) => {
                 info!("process_client_to_socks5: TcpConnectFailed: {}", id);
-                if let Some(tx) = port_map.get_mut(&id) {
-                    if tx.send(SocksMsg::TcpConnectFailed(id)).await.is_err() {
-                        error!("process_client_to_socks5: Send TcpConnectFailed failed");
-                        port_map.remove(&id);
-                    }
-                } else {
-                    warn!("process_client_to_socks5: Port id not found: {}", id);
-                }
+                self.send_client_to_socks5(SocksMsg::TcpConnectFailed(id), port_map, id)
+                    .await;
             }
             ClientToSocks5Msg::UdpAssociateSuccess(id) => {
                 debug!("process_client_to_socks5: UdpAssociateSuccess: {}", id);
-                if let Some(tx) = port_map.get_mut(&id) {
-                    if tx.send(SocksMsg::UdpAssociateSuccess(id)).await.is_err() {
-                        error!("process_client_to_socks5: Send UdpAssociateSuccess msg failed");
-                        port_map.remove(&id);
-                    }
-                } else {
-                    warn!("process_client_to_socks5: Port id not found: {}", id);
-                }
+                self.send_client_to_socks5(SocksMsg::UdpAssociateSuccess(id), port_map, id)
+                    .await;
             }
             ClientToSocks5Msg::UdpAssociateFailed(id) => {
                 info!("process_client_to_socks5: UdpAssociateFailed: {}", id);
-                if let Some(tx) = port_map.get_mut(&id) {
-                    if tx.send(SocksMsg::UdpAssociateFailed(id)).await.is_err() {
-                        error!("process_client_to_socks5: Send UdpAssociateFailed msg failed");
-                        port_map.remove(&id);
-                    }
-                } else {
-                    warn!("process_client_to_socks5: Port id not found: {}", id);
-                }
+                let msg = SocksMsg::UdpAssociateFailed(id);
+                self.send_client_to_socks5(msg, port_map, id).await;
             }
         }
         Ok(())
+    }
+
+    async fn send_client_to_socks5(
+        &mut self,
+        msg: SocksMsg,
+        port_map: &mut ClientPortMap,
+        id: u32,
+    ) {
+        if let Some(tx) = port_map.get_mut(&id) {
+            if let Err(e) = tx.send(msg).await {
+                error!("[client to socks5]: Send msg failed: {:?}", e);
+            }
+        } else {
+            warn!("[client to socks5]: port id not found: {}", id);
+        }
+    }
+
+    async fn send_client_request_server(&mut self, msg: CommandRequest) {
+        if let Err(e) = self.inner.send(&msg).await {
+            error!(
+                "[client request server] send request msg {:?} failed: {:?}",
+                msg, e
+            );
+        }
     }
 }
