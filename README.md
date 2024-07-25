@@ -40,6 +40,7 @@ cd target/release
 ```
 
 ### s2n-quic usage
+里面写死了 `pem` 的相对路径，所以一定要在项目根目录下运行
 ```
 cargo build
 ./target/debug/s2n-server

@@ -3,6 +3,29 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 ---
+## [0.5.3-support-s2n-quic](https://github.com/ghvn7777/proxy_tools/compare/v0.5.2-support-quic..v0.5.3-support-s2n-quic) - 2024-07-25
+
+### Bug Fixes
+
+- quic error just unwrap bug - ([ed04ccc](https://github.com/ghvn7777/proxy_tools/commit/ed04cccd0b1dd65e7757a54d499deec1d019aff2)) - Kaka
+- pem path error - ([48f3c17](https://github.com/ghvn7777/proxy_tools/commit/48f3c17d3cdd33d4e1caa9165a77e9ea01443d6b)) - Kaka
+
+### Features
+
+- s2n quic - ([f1f5d42](https://github.com/ghvn7777/proxy_tools/commit/f1f5d42d05ec1d8a0e0a9aa86cc676362106902c)) - Kaka
+- support s2n quic client - ([3c8bc1d](https://github.com/ghvn7777/proxy_tools/commit/3c8bc1d08b74509960851311f9d62880270ee1ae)) - Kaka
+
+### Miscellaneous Chores
+
+- changelog - ([7c9cb9a](https://github.com/ghvn7777/proxy_tools/commit/7c9cb9a6d8f4b896e5a1e4311b8ba2fc5aac2fe9)) - Kaka
+- looger - ([846feb6](https://github.com/ghvn7777/proxy_tools/commit/846feb6592b38960c8b0a2c11c6cfdc9132a2c23)) - Kaka
+- server config - ([722ffa0](https://github.com/ghvn7777/proxy_tools/commit/722ffa013f71e6e7466c44117ad2e1b08f0ef607)) - Kaka
+- server config reset - ([1c975e5](https://github.com/ghvn7777/proxy_tools/commit/1c975e564c64c5024895e27c034ada259beaf4c4)) - Kaka
+- read_u32 and write not flush - ([405f577](https://github.com/ghvn7777/proxy_tools/commit/405f577b96cfdd19101e741bb16545a2781484c3)) - Kaka
+- optimization read speed and describe buf size - ([036818f](https://github.com/ghvn7777/proxy_tools/commit/036818f3bc8a1ae81eaf56b0e3707df4577008c6)) - Kaka
+- log level - ([b32f506](https://github.com/ghvn7777/proxy_tools/commit/b32f5068f4284275186b4750cc5c14d653280ad1)) - Kaka
+
+---
 ## [0.5.2-support-quic](https://github.com/ghvn7777/proxy_tools/compare/v0.5.1..v0.5.2-support-quic) - 2024-07-22
 
 ### Bug Fixes
