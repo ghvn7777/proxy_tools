@@ -12,7 +12,7 @@ use vpn::{get_crypt, server::run_server, util::server_config::ServerConfig};
 async fn main() -> Result<()> {
     let config = Arc::new(ServerConfig::parse());
 
-    let layer = Layer::new().with_filter(LevelFilter::TRACE);
+    let layer = Layer::new().with_filter(LevelFilter::ERROR);
     tracing_subscriber::registry().with(layer).init();
 
     let addr = format!("0.0.0.0:{}", config.port);
