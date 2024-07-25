@@ -39,6 +39,14 @@ cd target/release
      no-auth
 ```
 
+### s2n-quic usage
+里面写死了 `pem` 的相对路径，所以一定要在项目根目录下运行
+```
+cargo build
+./target/debug/s2n-server
+./target/debug/s2n-client  --server-url 127.0.0.1:9527 no-auth
+```
+
 ## Debug Test
 ```
 sudo apt install netcat

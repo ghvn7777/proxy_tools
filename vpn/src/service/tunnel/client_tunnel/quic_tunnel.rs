@@ -33,8 +33,8 @@ impl QuicTunnel {
                 )
                 .await
                 {
-                    Ok(_) => info!("Tcp tunnel core task finished"),
-                    Err(e) => error!("Tcp tunnel core task error: {:?}", e),
+                    Ok(_) => info!("Quic tunnel core task finished"),
+                    Err(e) => error!("Quic tunnel core task error: {:?}", e),
                 }
             }
         });
@@ -59,10 +59,9 @@ async fn get_quic_stream(server_addr: String) -> Result<ClientQuicConn, VpnError
 
     // connect to server
     let connection = endpoint
-        .connect(server_addr.parse().unwrap(), "kaka")
-        .unwrap()
-        .await
-        .unwrap();
+        .connect(server_addr.parse().unwrap(), "kaka")?
+        .await?;
+
     info!("[client] connected: addr={}", connection.remote_address());
 
     Ok(ClientQuicConn::new(connection))
@@ -77,7 +76,7 @@ async fn quic_tunnel_core_task<S>(
 where
     S: Stream<Item = ClientMsg> + Unpin + Send + Sync + 'static,
 {
-    trace!("Tcp tunnel core task start");
+    trace!("Quic tunnel core task start");
     let connection = get_quic_stream(server_addr).await?;
     run_client(connection, crypt, msg_stream, main_sender_tx).await?;
     info!("tunnel core task finished");

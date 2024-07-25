@@ -40,9 +40,9 @@ where
         let buf = self.crypt.encrypt(buf)?;
         // info!("after encrypt buf len: {:?}", buf.len());
 
-        self.inner.write_i32(buf.len() as i32).await?;
+        self.inner.write_u32(buf.len() as u32).await?;
         self.inner.write_all(&buf).await?;
-        self.inner.flush().await?;
+        // self.inner.flush().await?;
         Ok(())
     }
 }

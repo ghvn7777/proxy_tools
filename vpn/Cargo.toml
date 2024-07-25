@@ -1,6 +1,6 @@
 [package]
 name = "vpn"
-version = "0.5.2"
+version = "0.5.3"
 edition = "2021"
 license = "MIT"
 
@@ -20,6 +20,15 @@ path = "src/quic_server.rs"
 name = "quic-client"
 path = "src/quic_client.rs"
 
+[[bin]]
+name = "s2n-server"
+path = "src/s2n_server.rs"
+
+[[bin]]
+name = "s2n-client"
+path = "src/s2n_client.rs"
+
+
 [dependencies]
 anyhow = { workspace = true }
 async-std = { workspace = true }
@@ -38,6 +47,7 @@ quinn-proto = { workspace = true }
 rand = { workspace = true }
 rcgen = { workspace = true }
 rustls = { workspace = true }
+s2n-quic = "1.43.0"
 serde = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }

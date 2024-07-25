@@ -14,6 +14,12 @@ pub enum VpnError {
     #[error("ReadExact error: {0}")]
     ReadExactError(#[from] quinn::ReadExactError),
 
+    #[error("Quinn Connecting error: {0}")]
+    ConnectingError(#[from] quinn::ConnectError),
+
+    #[error("Quinn Connection error: {0}")]
+    ConnectionError(#[from] quinn::ConnectionError),
+
     #[error("WriteAll error: {0}")]
     WriteAllError(#[from] quinn::WriteError),
 
@@ -55,6 +61,21 @@ pub enum ServiceError {
 
     #[error("Encrypt error")]
     EncryptError,
+
+    #[error("Tls error: {0}")]
+    TlsError(String),
+
+    #[error("Start error: {0}")]
+    StartError(String),
+
+    #[error("Connect error: {0}")]
+    ConnectError(String),
+
+    #[error("Keep alive error: {0}")]
+    KeepAliveError(String),
+
+    #[error("Connect transform error: {0}")]
+    ConnectTransformError(String),
 }
 
 #[derive(Error, Debug)]

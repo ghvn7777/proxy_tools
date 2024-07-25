@@ -106,8 +106,8 @@ async fn read_remote_tcp(
     mut stream: OwnedReadHalf,
     mut writer_tunnel: TunnelWriter<ServerMsg>,
 ) {
-    let mut buf = vec![0u8; 1024 * 4];
     loop {
+        let mut buf = vec![0u8; 1024 * 2];
         match stream.read(&mut buf).await {
             Ok(0) => {
                 info!("Tcp remote read 0");
@@ -115,9 +115,8 @@ async fn read_remote_tcp(
             }
 
             Ok(n) => {
-                let mut buf2 = Vec::with_capacity(n);
-                buf2.extend_from_slice(&buf[0..n]);
-                let msg = RemoteToServer::Data(id, Box::new(buf2)).into();
+                buf.truncate(n);
+                let msg = RemoteToServer::Data(id, Box::new(buf)).into();
                 info!("Read remote tcp data len: {:?}", n);
                 if writer_tunnel.send(msg).await.is_err() {
                     error!("Write tunnel error 0");
@@ -240,9 +239,9 @@ async fn read_remote_udp(
     socket: &UdpSocket,
     mut writer_tunnel: TunnelWriter<ServerMsg>,
 ) {
-    let mut buf = vec![0u8; 1024 * 4];
     let mut now = Instant::now();
     loop {
+        let mut buf = vec![0u8; 1024 * 2];
         if !running.load(Ordering::Relaxed) {
             break;
         }
@@ -258,9 +257,8 @@ async fn read_remote_udp(
                     continue;
                 };
 
-                let mut buf2 = Vec::with_capacity(n);
-                buf2.extend_from_slice(&buf[0..n]);
-                let msg = RemoteToServer::UdpData(id, target_addr, Box::new(buf2)).into();
+                buf.truncate(n);
+                let msg = RemoteToServer::UdpData(id, target_addr, Box::new(buf)).into();
                 info!("Read remote udp data len: {:?}", n);
                 if writer_tunnel.send(msg).await.is_err() {
                     error!("Write tunnel error 3");

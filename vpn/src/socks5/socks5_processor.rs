@@ -273,7 +273,7 @@ async fn udp_proxy_socks_read(
 ) {
     let id = write_port.get_id();
     // 这里的 buffer 大了一些，因为 udp 是不可靠的，如果数据包太大，buffer 小了可能会导致数据丢失
-    let mut buf = vec![0u8; 1024 * 10];
+    let mut buf = vec![0u8; 1024 * 5];
     let mut send_client_add_flag = false;
     loop {
         if !running.load(Ordering::Relaxed) {
@@ -459,20 +459,19 @@ async fn tcp_connection_holder(running: &AtomicBool, mut stream: TcpStream) {
 }
 
 async fn tcp_proxy_socks_read(mut reader: OwnedReadHalf, write_port: &mut TunnelWriter<ClientMsg>) {
-    let mut buf = vec![0u8; 1024 * 4];
     let id = write_port.get_id();
     loop {
+        let mut buf = vec![0u8; 1024 * 2];
         match reader.read(&mut buf).await {
             Ok(0) => {
                 info!("Socks5 read 0 bytes, close port: {}", id);
                 break;
             }
             Ok(n) => {
-                let mut buf2 = Vec::with_capacity(n);
-                buf2.extend_from_slice(&buf[0..n]);
+                buf.truncate(n);
                 info!("Socks5 read {} bytes", n);
                 if write_port
-                    .send(Socks5ToClientMsg::Data(id, Box::new(buf2)).into())
+                    .send(Socks5ToClientMsg::Data(id, Box::new(buf)).into())
                     .await
                     .is_err()
                 {
