@@ -39,6 +39,13 @@ cd target/release
      no-auth
 ```
 
+### s2n-quic usage
+```
+cargo build
+./target/debug/s2n-server
+./target/debug/s2n-client  --server-url 127.0.0.1:9527 no-auth
+```
+
 ## Debug Test
 ```
 sudo apt install netcat

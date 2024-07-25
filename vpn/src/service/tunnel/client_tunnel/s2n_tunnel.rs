@@ -56,7 +56,7 @@ where
 {
     trace!("S2n tunnel core task start");
     let client = Client::builder()
-        .with_tls(Path::new("cert.pem"))
+        .with_tls(Path::new("vpn/fixtures/cert.pem"))
         .map_err(|e| ServiceError::TlsError(e.to_string()))?
         .with_io("0.0.0.0:0")?
         .start()

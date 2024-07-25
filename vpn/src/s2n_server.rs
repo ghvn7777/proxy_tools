@@ -12,15 +12,15 @@ use vpn::{get_crypt, server::run_server, util::server_config::ServerConfig};
 async fn main() -> Result<()> {
     let config = Arc::new(ServerConfig::parse());
 
-    let layer = Layer::new().with_filter(LevelFilter::ERROR);
+    let layer = Layer::new().with_filter(LevelFilter::TRACE);
     tracing_subscriber::registry().with(layer).init();
 
     let addr = format!("0.0.0.0:{}", config.port);
 
     let mut server = Server::builder()
         .with_tls((
-            Path::new("fixtures/cert.pem"),
-            Path::new("fixtures/key.pem"),
+            Path::new("vpn/fixtures/cert.pem"),
+            Path::new("vpn/fixtures/key.pem"),
         ))?
         .with_io(addr.as_str())?
         .start()?;
