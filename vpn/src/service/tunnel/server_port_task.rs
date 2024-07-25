@@ -88,16 +88,16 @@ pub async fn tcp_tunnel_port_task(
     let r = read_remote_tcp(id, reader, writer_tunnel);
     let w = write_remote_tcp(writer, reader_tunnel);
 
-    // tokio::select! {
-    //     _ = r => {
-    //         info!("Read remote tcp task end");
-    //     }
-    //     _ = w => {
-    //         info!("Write remote tcp task end");
-    //     }
-    // };
+    tokio::select! {
+        _ = r => {
+            info!("Read remote tcp task end");
+        }
+        _ = w => {
+            info!("Write remote tcp task end");
+        }
+    };
 
-    join!(w, r);
+    // join!(w, r);
     info!("Server tunnel port tcp task end id: {}", id);
 }
 
