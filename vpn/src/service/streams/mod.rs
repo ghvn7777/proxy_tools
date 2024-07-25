@@ -1,8 +1,8 @@
 mod read_stream;
 mod write_stream;
 
-use quinn::{Connection, RecvStream, SendStream};
 pub use read_stream::ProstReadStream;
+use s2n_quic::stream::BidirectionalStream;
 use tokio::{
     io::{AsyncReadExt, AsyncWrite},
     net::{
@@ -18,9 +18,9 @@ use tonic::async_trait;
 use crate::VpnError;
 
 /// server quic connection, use accept_bi to get recv and send stream
-pub struct ServerQuicConn(Connection);
+pub struct ServerQuicConn(quinn::Connection);
 /// client quic connection, use open_bi to get recv and send stream
-pub struct ClientQuicConn(Connection);
+pub struct ClientQuicConn(quinn::Connection);
 
 #[async_trait]
 pub trait ReadStream<M>: Send + Sync + 'static {
@@ -55,8 +55,8 @@ impl StreamSplit for TcpStream {
 
 #[async_trait]
 impl StreamSplit for ServerQuicConn {
-    type ReadStream = RecvStream;
-    type WriteStream = SendStream;
+    type ReadStream = quinn::RecvStream;
+    type WriteStream = quinn::SendStream;
     async fn stream_split(self) -> (Self::ReadStream, Self::WriteStream) {
         let res = self.0.accept_bi().await.unwrap();
         (res.1, res.0)
@@ -65,22 +65,31 @@ impl StreamSplit for ServerQuicConn {
 
 #[async_trait]
 impl StreamSplit for ClientQuicConn {
-    type ReadStream = RecvStream;
-    type WriteStream = SendStream;
+    type ReadStream = quinn::RecvStream;
+    type WriteStream = quinn::SendStream;
     async fn stream_split(self) -> (Self::ReadStream, Self::WriteStream) {
         let res = self.0.open_bi().await.unwrap();
         (res.1, res.0)
     }
 }
 
+#[async_trait]
+impl StreamSplit for BidirectionalStream {
+    type ReadStream = s2n_quic::stream::ReceiveStream;
+    type WriteStream = s2n_quic::stream::SendStream;
+    async fn stream_split(self) -> (Self::ReadStream, Self::WriteStream) {
+        self.split()
+    }
+}
+
 impl ServerQuicConn {
-    pub fn new(conn: Connection) -> Self {
+    pub fn new(conn: quinn::Connection) -> Self {
         Self(conn)
     }
 }
 
 impl ClientQuicConn {
-    pub fn new(conn: Connection) -> Self {
+    pub fn new(conn: quinn::Connection) -> Self {
         Self(conn)
     }
 }
